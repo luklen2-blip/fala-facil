@@ -32,7 +32,7 @@
     "ativo": true,
     "criadoEm": "2026-09-28T18:00:00.000Z",
     "atualizadoEm": "2026-09-28T18:00:00.000Z",
-    "acessosCount": 5
+    "acessosCount": 6
   },
   {
     "id": "qr_restaurante_sabor",
@@ -51,6 +51,6 @@
     "ativo": true,
     "criadoEm": "2026-09-28T18:00:00.000Z",
     "atualizadoEm": "2026-09-28T18:00:00.000Z",
-    "acessosCount": 3
+    "acessosCount": 4
   }
 ]

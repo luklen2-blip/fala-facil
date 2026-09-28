@@ -1,18 +1,45 @@
-import React, { useState } from 'react';
-import { X, Copy, Check, QrCode, Heart, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Copy, Check, QrCode, Heart, Sparkles, Tag, ShieldCheck } from 'lucide-react';
 import { generatePixPayload, getPixQrCodeUrl } from '../services/pixService.js';
+
+export const PLANOS_PIX = [
+  { id: 'falafacil_individual', nome: 'FALAFÁCIL', valor: '19.90', precoExibicao: 'R$ 19,90', detalhe: 'Acesso vitalício • 1h grátis' },
+  { id: 'comercio', nome: 'COMÉRCIO', valor: '29.90', precoExibicao: 'R$ 29,90/mês', detalhe: 'Balcões, caixas e lojas' },
+  { id: 'profissional', nome: 'PROFISSIONAL', valor: '59.90', precoExibicao: 'R$ 59,90/mês', detalhe: 'Consultórios e clínicas' },
+  { id: 'institucional', nome: 'INSTITUCIONAL', valor: '149.90', precoExibicao: 'R$ 149,90/mês', detalhe: 'Escolas e repartições' },
+  { id: 'empresarial', nome: 'EMPRESARIAL', valor: '299.90', precoExibicao: 'R$ 299,90/mês', detalhe: 'Redes e hospitais' }
+];
+
+function formatMoeda(val) {
+  if (!val) return '19,90';
+  const num = parseFloat(val);
+  if (isNaN(num)) return val;
+  return num.toFixed(2).replace('.', ',');
+}
 
 export default function PixModal({ isOpen, onClose, initialAmount = '19.90', planName = '' }) {
   if (!isOpen) return null;
 
   const [amount, setAmount] = useState(initialAmount || '19.90');
+  const [currentPlanName, setCurrentPlanName] = useState(planName || 'Plano FALAFÁCIL');
   const [copied, setCopied] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialAmount) {
       setAmount(initialAmount);
     }
-  }, [initialAmount, isOpen]);
+    if (planName) {
+      setCurrentPlanName(planName);
+    } else {
+      const match = PLANOS_PIX.find(p => p.valor === initialAmount);
+      setCurrentPlanName(match ? `Plano ${match.nome}` : 'Plano FALAFÁCIL');
+    }
+  }, [initialAmount, planName, isOpen]);
+
+  const handleSelectPlanPill = (plano) => {
+    setAmount(plano.valor);
+    setCurrentPlanName(`Plano ${plano.nome}`);
+  };
 
   const pixKey = 'contato@falafacil.com.br';
   const payload = generatePixPayload({
@@ -31,84 +58,112 @@ export default function PixModal({ isOpen, onClose, initialAmount = '19.90', pla
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const planoAtivoObj = PLANOS_PIX.find(p => p.valor === amount);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-5 shadow-2xl border border-slate-200 relative max-h-[92vh] overflow-y-auto">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100"
+          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition-colors"
           aria-label="Fechar modal de Pix"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-            <Heart className="w-4 h-4 fill-emerald-500" />
+        {/* Cabeçalho */}
+        <div className="flex items-center gap-2.5 mb-3.5">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5 fill-emerald-600" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-base">
-              {planName ? `Contratar ${planName}` : 'Apoie o FalaFácil'}
+            <h3 className="font-black text-slate-900 text-base leading-snug">
+              {currentPlanName || 'Contratar Plano FalaFácil'}
             </h3>
-            <p className="text-xs text-slate-500">
-              {planName ? 'Ativação imediata via Pix Oficial Bacen' : 'Mantenha a ferramenta viva e acessível'}
+            <p className="text-[11px] text-slate-500 font-medium">
+              Ativação imediata via Pix Oficial Banco Central
             </p>
           </div>
         </div>
 
-        {/* Seleção rápida de valor */}
-        <div className="grid grid-cols-4 gap-1.5 my-3">
-          {['5.00', '10.00', '25.00', '50.00'].map((val) => (
-            <button
-              key={val}
-              type="button"
-              onClick={() => setAmount(val)}
-              className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-all ${
-                amount === val
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              R$ {val.replace('.00', '')}
-            </button>
-          ))}
-        </div>
-
-        {/* QR Code Dinâmico */}
-        <div className="flex flex-col items-center justify-center p-3 bg-slate-50 rounded-xl border border-slate-200 my-2">
-          <img
-            src={qrCodeUrl}
-            alt="QR Code Pix Banco Central"
-            className="w-44 h-44 object-contain rounded-lg shadow-sm"
-          />
-          <p className="text-[11px] text-slate-500 mt-2 font-medium">
-            Abra o app do seu banco e aponte a câmera
+        {/* Card Destaque: VALOR RESPECTIVO DO PLANO */}
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 border-2 border-emerald-400/60 rounded-2xl p-3.5 text-center shadow-sm my-2">
+          <span className="text-[10px] uppercase font-black text-emerald-800 tracking-wider block">
+            Valor Respectivo a Pagar
+          </span>
+          <div className="text-3xl font-black text-emerald-700 my-0.5 tracking-tight">
+            R$ {formatMoeda(amount)}
+          </div>
+          <p className="text-xs font-semibold text-emerald-900">
+            {planoAtivoObj ? planoAtivoObj.detalhe : 'Plano Oficial FalaFácil'}
           </p>
         </div>
 
-        {/* Botão Copia e Cola */}
+        {/* Seletor de Planos Comerciais com os Valores Exatos */}
+        <div className="my-3">
+          <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
+            Selecione o plano desejado:
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {PLANOS_PIX.map((plano) => {
+              const isSelected = amount === plano.valor;
+              return (
+                <button
+                  key={plano.id}
+                  type="button"
+                  onClick={() => handleSelectPlanPill(plano)}
+                  className={`p-2 rounded-xl text-left border transition-all ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-300 scale-[1.02]'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  <span className="block text-[11px] font-black uppercase truncate">{plano.nome}</span>
+                  <span className={`block text-xs font-bold ${isSelected ? 'text-emerald-100' : 'text-emerald-600'}`}>
+                    {plano.precoExibicao}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* QR Code Dinâmico do Banco Central */}
+        <div className="flex flex-col items-center justify-center p-3.5 bg-slate-50 rounded-2xl border border-slate-200 my-2">
+          <img
+            src={qrCodeUrl}
+            alt={`QR Code Pix no valor de R$ ${formatMoeda(amount)}`}
+            className="w-48 h-48 object-contain rounded-xl shadow-sm bg-white p-2 border border-slate-200"
+          />
+          <p className="text-[11px] text-slate-600 mt-2 font-medium text-center">
+            Abra o app do seu banco e aponte a câmera para ler o QR Code
+          </p>
+        </div>
+
+        {/* Botão Copia e Cola com o Valor Explícito */}
         <button
           type="button"
           onClick={handleCopy}
-          className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all mt-3"
+          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all mt-2.5"
         >
           {copied ? (
             <>
-              <Check className="w-4 h-4" />
-              <span>Código Pix Copiado!</span>
+              <Check className="w-5 h-5 text-white" />
+              <span>Código Pix de R$ {formatMoeda(amount)} Copiado!</span>
             </>
           ) : (
             <>
-              <Copy className="w-4 h-4" />
-              <span>Copiar Chave Copia-e-Cola (Bacen)</span>
+              <Copy className="w-5 h-5 text-white" />
+              <span>Copiar Código Pix (R$ {formatMoeda(amount)})</span>
             </>
           )}
         </button>
 
-        <p className="text-[10px] text-center text-slate-400 mt-2">
-          Padrão oficial EMV BR Code do Banco Central do Brasil.
-        </p>
+        <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 mt-2.5">
+          <ShieldCheck size={13} className="text-emerald-600" />
+          <span>Padrão oficial EMV BR Code do Banco Central do Brasil.</span>
+        </div>
       </div>
     </div>
   );

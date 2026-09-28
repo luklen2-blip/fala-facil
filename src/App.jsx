@@ -1001,6 +1001,7 @@ export default function FalaFacilApp() {
           isOpen={isQRAdminOpen} 
           onClose={() => setIsQRAdminOpen(false)}
           onSelectVisualQR={(item) => setSelectedVisualQR(item)}
+          onSelectPlan={handleSelectPlan}
         />
         <QRVisualGeneratorModal
           isOpen={Boolean(selectedVisualQR)}

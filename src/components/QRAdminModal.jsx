@@ -10,7 +10,7 @@ import {
   SEGMENTOS_DISPONIVEIS, SEGMENTO_TEMPLATES, PLANOS_COMERCIAIS, COPY_POSICIONAMENTO 
 } from '../data/qrTemplates.js';
 
-export default function QRAdminModal({ isOpen, onClose, onSelectVisualQR }) {
+export default function QRAdminModal({ isOpen, onClose, onSelectVisualQR, onSelectPlan }) {
   const [tab, setTab] = useState('lista'); // 'lista' | 'novo' | 'planos'
   const [qrcodes, setQrcodes] = useState([]);
   const [editingItem, setEditingItem] = useState(null);
@@ -564,6 +564,22 @@ export default function QRAdminModal({ isOpen, onClose, onSelectVisualQR }) {
                       </div>
                     </div>
                     <p className="text-xs text-slate-600 mt-2">{plano.descricao}</p>
+                    <div className="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                      <span className="text-[10px] text-emerald-700 font-bold">Ativação Instantânea</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const valorLimpo = plano.preco.replace('R$', '').split('/')[0].trim().replace(',', '.');
+                          if (onSelectPlan) {
+                            onClose();
+                            onSelectPlan(plano.nome, valorLimpo);
+                          }
+                        }}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1 active:scale-95"
+                      >
+                        <span>Contratar via Pix</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
