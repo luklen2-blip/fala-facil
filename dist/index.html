@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <title>FalaFácil Balcão — Comunicação Acessível</title>
-    <script type="module" crossorigin src="/assets/index-D3pwjtpR.js"></script>
+    <script type="module" crossorigin src="/assets/index-Djfx4Uq-.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-B3uBzAlQ.css">
   </head>
   <body class="bg-slate-100 text-slate-900 antialiased selection:bg-blue-200">
@@ -18,9 +18,29 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => {
+          navigator.serviceWorker.register('/sw.js').then((reg) => {
+            reg.update();
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.location.reload();
+                  }
+                });
+              }
+            });
+          }).catch(err => {
             console.log('SW registration note:', err.message);
           });
+        });
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
         });
       }
     </script>

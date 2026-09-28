@@ -158,18 +158,22 @@ function serveStatic(res, filePath) {
 
     applySecurityHeaders(res);
 
-    // Cache otimizado: imutável para assets compilados e no-cache para index.html
+    // Cache otimizado: imutável para assets compilados e no-cache para index.html e Service Worker
+    const baseName = path.basename(filePath);
+    const isServiceWorker = baseName === 'sw.js' || baseName === 'manifest.json';
     const isImmutable = filePath.includes('dist/assets') || filePath.includes('dist\\assets');
-    const cacheControl = ext === '.html'
-      ? 'no-cache, no-store, must-revalidate'
+    const cacheControl = (ext === '.html' || isServiceWorker)
+      ? 'no-cache, no-store, must-revalidate, max-age=0'
       : isImmutable
       ? 'public, max-age=31536000, immutable'
-      : 'public, max-age=86400';
+      : 'public, max-age=3600';
 
     res.writeHead(200, {
       'Content-Type': contentType,
       'Content-Length': stat.size,
-      'Cache-Control': cacheControl
+      'Cache-Control': cacheControl,
+      'Pragma': isServiceWorker || ext === '.html' ? 'no-cache' : 'public',
+      'Expires': isServiceWorker || ext === '.html' ? '0' : undefined
     });
     fs.createReadStream(filePath).pipe(res);
     return true;

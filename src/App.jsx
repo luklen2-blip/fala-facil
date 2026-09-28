@@ -89,6 +89,42 @@ export default function FalaFacilApp() {
   const recognitionRef = useRef(null);
   const shouldKeepListeningRef = useRef(false);
 
+  const APP_VERSION = 'v2.1.0 Definitivo';
+
+  // Limpeza de cache legado na inicialização para atualização definitiva
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedVer = localStorage.getItem('falafacil_app_version');
+      if (storedVer !== APP_VERSION) {
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            names.forEach((name) => {
+              if (name !== 'falafacil-v2.1.0-definitivo') {
+                caches.delete(name);
+              }
+            });
+          });
+        }
+        localStorage.setItem('falafacil_app_version', APP_VERSION);
+      }
+    }
+  }, []);
+
+  const handleForceUpdateApp = async () => {
+    if (typeof window !== 'undefined') {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      localStorage.setItem('falafacil_app_version', APP_VERSION);
+      window.location.href = window.location.origin + '/?atualizado=' + Date.now();
+    }
+  };
+
   // Gera o QR Code inline para visualização imediata no balcão
   useEffect(() => {
     const targetSlug = (qrProfile && typeof qrProfile === 'object' && qrProfile.slug) ? qrProfile.slug : 'farmacia-central';
@@ -319,12 +355,23 @@ export default function FalaFacilApp() {
           altoContraste ? 'bg-zinc-950 border-yellow-400' : 'bg-white border-indigo-600'
         }`}>
           <div className="flex items-center justify-between pb-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
                 altoContraste ? 'bg-yellow-400 text-black font-black' : 'text-indigo-700 bg-indigo-50 border border-indigo-200'
               }`}>
                 Atendente Ouvinte
               </span>
+              <button
+                type="button"
+                onClick={handleForceUpdateApp}
+                title="Versão definitiva. Clique para forçar atualização e limpar cache."
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all active:scale-95 flex items-center gap-1 ${
+                  altoContraste ? 'bg-zinc-800 text-yellow-400 border border-yellow-400' : 'bg-slate-200/80 hover:bg-slate-300 text-slate-600'
+                }`}
+              >
+                <span>v2.1.0</span>
+                <RotateCcw size={10} />
+              </button>
               {ouvindo && (
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-rose-500"></span>
