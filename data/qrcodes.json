@@ -1,0 +1,56 @@
+[
+  {
+    "id": "qr_1790629521876_uk01i",
+    "slug": "clinica-sao-lucas",
+    "nome": "Clínica São Lucas",
+    "segmento": "Saúde",
+    "setor": "Recepção 1",
+    "fraseBoasVindas": "Seja bem-vindo à Clínica São Lucas!",
+    "frases": [
+      "Tenho uma consulta agendada.",
+      "Onde pego a ficha de atendimento?",
+      "Preciso de ajuda."
+    ],
+    "ativo": true,
+    "criadoEm": "2026-09-28T21:05:21.876Z",
+    "atualizadoEm": "2026-09-28T21:06:15.387Z",
+    "acessosCount": 2
+  },
+  {
+    "id": "qr_farmacia_central",
+    "slug": "farmacia-central",
+    "nome": "Farmácia Central",
+    "segmento": "Farmácia",
+    "setor": "Balcão de Atendimento",
+    "fraseBoasVindas": "Bem-vindo à Farmácia Central! Como podemos ajudar você hoje?",
+    "frases": [
+      "Gostaria de saber o preço deste medicamento.",
+      "Esse medicamento está disponível?",
+      "Preciso falar com o farmacêutico.",
+      "Preciso de ajuda."
+    ],
+    "ativo": true,
+    "criadoEm": "2026-09-28T18:00:00.000Z",
+    "atualizadoEm": "2026-09-28T18:00:00.000Z",
+    "acessosCount": 2
+  },
+  {
+    "id": "qr_restaurante_sabor",
+    "slug": "restaurante-sabor",
+    "nome": "Restaurante Sabor & Arte",
+    "segmento": "Restaurante",
+    "setor": "Salão Principal",
+    "fraseBoasVindas": "Bem-vindo ao Restaurante Sabor & Arte! Como podemos atender você?",
+    "frases": [
+      "Gostaria de fazer um pedido.",
+      "Tenho alergia alimentar.",
+      "Preciso de ajuda.",
+      "Gostaria de pagar.",
+      "Pode trazer a conta?"
+    ],
+    "ativo": true,
+    "criadoEm": "2026-09-28T18:00:00.000Z",
+    "atualizadoEm": "2026-09-28T18:00:00.000Z",
+    "acessosCount": 1
+  }
+]

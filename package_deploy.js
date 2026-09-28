@@ -30,6 +30,7 @@ const itemsToCopy = [
   'src',
   'tests',
   'generate_icons.cjs',
+  'data',
   'tailwind.config.js',
   'postcss.config.js',
   'vite.config.js'

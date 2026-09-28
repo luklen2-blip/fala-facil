@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Volume2, RotateCcw, Send, Building2, 
   ShoppingBag, MessageCircle, Plus, Trash2, BookmarkCheck, CheckCircle2,
-  Shield, Heart, Type, Eye 
+  Shield, Heart, Type, Eye, QrCode, Store, ArrowLeft, AlertCircle
 } from 'lucide-react';
 import PixModal from './components/PixModal.jsx';
 import LegalModal from './components/LegalModal.jsx';
+import QRAdminModal from './components/QRAdminModal.jsx';
+import QRVisualGeneratorModal from './components/QRVisualGeneratorModal.jsx';
+import { getQRCodeBySlug, sanitizeSlug } from './services/qrCodeService.js';
 
 const CATEGORIAS_PADRAO = {
   servicos: [
@@ -41,6 +44,12 @@ export default function FalaFacilApp() {
   const [fontSizeIndex, setFontSizeIndex] = useState(1); // 0 = Padrão (lg), 1 = Grande (xl), 2 = Extra Grande (2xl)
   const [altoContraste, setAltoContraste] = useState(false);
 
+  // Módulo QR Code FalaFácil
+  const [qrProfile, setQrProfile] = useState(null); // null | profile object | 'not_found' | 'disabled'
+  const [viewStandardFallback, setViewStandardFallback] = useState(false);
+  const [isQRAdminOpen, setIsQRAdminOpen] = useState(false);
+  const [selectedVisualQR, setSelectedVisualQR] = useState(null);
+
   // Frases personalizadas salvas no navegador (com fallback resiliente)
   const [frasesCustom, setFrasesCustom] = useState(() => {
     try {
@@ -73,6 +82,32 @@ export default function FalaFacilApp() {
   // Mapeamento de escalas de fonte
   const fontScales = ['text-lg', 'text-xl', 'text-2xl'];
   const fontLabels = ['A', 'A+', 'A++'];
+
+  // Detecção automática de QR Code no URL (/qr/:slug ou ?qr=slug)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    let slug = searchParams.get('qr');
+    if (!slug && path.startsWith('/qr/')) {
+      slug = path.replace('/qr/', '').split('/')[0];
+    }
+
+    if (slug) {
+      const clean = sanitizeSlug(slug);
+      getQRCodeBySlug(clean).then(item => {
+        if (!item) {
+          setQrProfile('not_found');
+        } else if (item.ativo === false) {
+          setQrProfile({ ...item, disabled: true });
+        } else {
+          setQrProfile(item);
+        }
+      });
+    } else {
+      setQrProfile(null);
+    }
+  }, []);
 
   // Salva no localStorage sempre que as frases customizadas mudarem
   useEffect(() => {
@@ -112,7 +147,6 @@ export default function FalaFacilApp() {
       };
 
       recognition.onend = () => {
-        // Reconexão contínua caso o usuário não tenha clicado para parar
         if (shouldKeepListeningRef.current) {
           try {
             recognition.start();
@@ -171,7 +205,6 @@ export default function FalaFacilApp() {
     utterance.lang = 'pt-BR';
     utterance.rate = 0.95; // Cadência confortável para balcão
 
-    // Seleciona a melhor voz brasileira disponível
     try {
       const voices = window.speechSynthesis.getVoices();
       const ptVoice = voices.find(v => v.lang === 'pt-BR' || v.lang === 'pt_BR') || voices.find(v => v.lang.startsWith('pt'));
@@ -184,7 +217,7 @@ export default function FalaFacilApp() {
       setFalando(true);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate(60); // Vibração curta de confirmação
+          navigator.vibrate(60);
         } catch (e) {}
       }
     };
@@ -193,7 +226,7 @@ export default function FalaFacilApp() {
       setFalando(false);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate([40, 60, 40]); // Pulso tátil duplo de encerramento
+          navigator.vibrate([40, 60, 40]);
         } catch (e) {}
       }
     };
@@ -221,7 +254,6 @@ export default function FalaFacilApp() {
       alert("A frase não pode exceder 120 caracteres.");
       return;
     }
-    // Evita duplicatas
     if (frasesCustom.some(f => f.toLowerCase() === limpa.toLowerCase())) {
       alert("Esta frase já está na sua lista.");
       return;
@@ -241,6 +273,16 @@ export default function FalaFacilApp() {
   const handleToggleAltoContraste = () => {
     setAltoContraste((prev) => !prev);
   };
+
+  const handleResetToStandard = () => {
+    setQrProfile(null);
+    setViewStandardFallback(false);
+    if (typeof window !== 'undefined' && window.history) {
+      window.history.pushState({}, '', '/');
+    }
+  };
+
+  const isProfileActive = qrProfile && qrProfile !== 'not_found' && !qrProfile.disabled && !viewStandardFallback;
 
   return (
     <div className={`flex justify-center items-stretch min-h-screen ${altoContraste ? 'bg-black' : 'bg-slate-900'}`}>
@@ -267,8 +309,24 @@ export default function FalaFacilApp() {
               )}
             </div>
 
-            {/* Barra de Ferramentas de Acessibilidade */}
+            {/* Barra de Ferramentas de Acessibilidade & Gestão */}
             <div className="flex items-center gap-1.5">
+              {/* Painel Administrativo de QR Codes */}
+              <button 
+                type="button"
+                onClick={() => setIsQRAdminOpen(true)}
+                title="Meus QR Codes FalaFácil (Painel do Estabelecimento)"
+                className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold ${
+                  altoContraste 
+                    ? 'bg-yellow-400 text-black' 
+                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                }`}
+                aria-label="Abrir Painel QR Codes"
+              >
+                <QrCode size={14} />
+                <span className="hidden sm:inline text-[11px]">QR Codes</span>
+              </button>
+
               {/* Zoom de Fonte */}
               <button 
                 type="button"
@@ -336,7 +394,7 @@ export default function FalaFacilApp() {
           </div>
 
           {/* Caixa de Exibição da Transcrição */}
-          <div className={`my-auto min-h-[105px] max-h-[160px] overflow-y-auto flex items-center justify-center text-center p-3.5 rounded-2xl border ${
+          <div className={`my-auto min-h-[100px] max-h-[155px] overflow-y-auto flex items-center justify-center text-center p-3.5 rounded-2xl border ${
             altoContraste 
               ? 'bg-black border-yellow-400 text-yellow-300' 
               : 'bg-slate-50 border-slate-200 text-slate-800'
@@ -353,7 +411,7 @@ export default function FalaFacilApp() {
           <button
             type="button"
             onClick={alternarMicrofone}
-            className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-lg font-bold shadow-md transition-all active:scale-[0.98] ${
+            className={`w-full py-3.5 rounded-2xl flex items-center justify-center gap-3 text-lg font-bold shadow-md transition-all active:scale-[0.98] ${
               ouvindo 
                 ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-200' 
                 : altoContraste
@@ -380,154 +438,259 @@ export default function FalaFacilApp() {
           altoContraste ? 'bg-zinc-950 text-yellow-300' : 'bg-slate-50'
         }`}>
           <div>
-            {/* Cabeçalho de Navegação de Categorias */}
-            <div className="flex items-center justify-between mb-3">
-              <span className={`text-xs font-bold uppercase tracking-wider ${
-                altoContraste ? 'text-yellow-400' : 'text-slate-500'
-              }`}>
-                Minhas Respostas
-              </span>
-              <div className={`flex gap-1 p-1 rounded-xl ${
-                altoContraste ? 'bg-zinc-900 border border-yellow-500' : 'bg-slate-200'
-              }`}>
-                <button 
+            {/* CENÁRIO 1: QR CODE ATIVO ESPECÍFICO DO ESTABELECIMENTO */}
+            {isProfileActive ? (
+              <div className="space-y-3">
+                {/* Banner de Boas-Vindas do Estabelecimento */}
+                <div className={`p-3 rounded-2xl border transition-all ${
+                  altoContraste ? 'bg-zinc-900 border-yellow-400' : 'bg-white border-indigo-100 shadow-sm'
+                }`}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Store size={16} className={altoContraste ? 'text-yellow-400' : 'text-indigo-600'} />
+                        <h2 className="font-black text-sm uppercase tracking-wide">
+                          {qrProfile.nome}
+                        </h2>
+                      </div>
+                      {qrProfile.setor && (
+                        <p className={`text-[11px] font-semibold ml-5 ${altoContraste ? 'text-yellow-500' : 'text-indigo-500'}`}>
+                          {qrProfile.setor}
+                        </p>
+                      )}
+                      <p className={`text-xs mt-1 font-medium ${altoContraste ? 'text-yellow-300' : 'text-slate-600'}`}>
+                        {qrProfile.fraseBoasVindas}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setViewStandardFallback(true)}
+                      className="text-[10px] text-slate-400 hover:text-indigo-600 font-semibold underline shrink-0"
+                    >
+                      Todas categorias
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista Exclusiva de Frases do Estabelecimento */}
+                <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1">
+                  {qrProfile.frases && qrProfile.frases.map((frase, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => falarTexto(frase)}
+                      className={`text-left border p-3 rounded-xl font-medium text-sm shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${
+                        altoContraste 
+                          ? 'bg-black border-yellow-500 text-yellow-300 hover:border-yellow-300' 
+                          : 'bg-white border-slate-200 hover:border-indigo-400 text-slate-800 active:bg-indigo-50'
+                      }`}
+                      aria-label={`Falar frase: ${frase}`}
+                    >
+                      <span className="leading-snug">{frase}</span>
+                      <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : qrProfile === 'not_found' ? (
+              /* CENÁRIO 2: QR CODE NÃO ENCONTRADO */
+              <div className="text-center py-6 px-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-2">
+                <AlertCircle size={32} className="mx-auto text-amber-500" />
+                <h3 className="font-bold text-sm text-slate-800">QR Code Não Encontrado</h3>
+                <p className="text-xs text-slate-500">
+                  O perfil que você tentou acessar não foi localizado ou o link foi modificado.
+                </p>
+                <button
                   type="button"
-                  title="Serviços Públicos"
-                  onClick={() => setCategoriaAtiva('servicos')} 
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    categoriaAtiva === 'servicos' 
-                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
-                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
-                  }`}
-                  aria-label="Categoria Serviços Públicos"
+                  onClick={handleResetToStandard}
+                  className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
                 >
-                  <Building2 size={16} />
-                </button>
-                <button 
-                  type="button"
-                  title="Comércio e Farmácias"
-                  onClick={() => setCategoriaAtiva('comercio')} 
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    categoriaAtiva === 'comercio' 
-                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
-                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
-                  }`}
-                  aria-label="Categoria Comércio"
-                >
-                  <ShoppingBag size={16} />
-                </button>
-                <button 
-                  type="button"
-                  title="Dúvidas de Comunicação"
-                  onClick={() => setCategoriaAtiva('ajuda')} 
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    categoriaAtiva === 'ajuda' 
-                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
-                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
-                  }`}
-                  aria-label="Categoria Ajuda e Diálogo"
-                >
-                  <MessageCircle size={16} />
-                </button>
-                <button 
-                  type="button"
-                  title="Minhas Frases Salvas"
-                  onClick={() => setCategoriaAtiva('personalizadas')} 
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    categoriaAtiva === 'personalizadas' 
-                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
-                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
-                  }`}
-                  aria-label="Categoria Frases Salvas"
-                >
-                  <BookmarkCheck size={16} />
+                  Acessar FalaFácil Balcão Padrão
                 </button>
               </div>
-            </div>
-
-            {/* Área de Criação de Frases Personalizadas */}
-            {categoriaAtiva === 'personalizadas' && (
-              <form onSubmit={handleAdicionarFraseCustom} className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  maxLength={120}
-                  placeholder="Salvar nova frase frequente..."
-                  value={novaFraseCustom}
-                  onChange={(e) => setNovaFraseCustom(e.target.value)}
-                  className={`flex-1 border rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 ${
-                    altoContraste 
-                      ? 'bg-black border-yellow-400 text-yellow-300 focus:ring-yellow-300' 
-                      : 'bg-white border-slate-300 focus:ring-indigo-500 text-slate-800'
-                  }`}
-                  aria-label="Texto da nova frase personalizada"
-                />
+            ) : qrProfile?.disabled ? (
+              /* CENÁRIO 3: QR CODE DESATIVADO */
+              <div className="text-center py-6 px-4 bg-white rounded-2xl border border-rose-200 shadow-sm space-y-2">
+                <AlertCircle size={32} className="mx-auto text-rose-500" />
+                <h3 className="font-bold text-sm text-slate-800">QR Code Temporariamente Desativado</h3>
+                <p className="text-xs text-slate-500">
+                  O estabelecimento "{qrProfile.nome}" pausou este ponto de atendimento.
+                </p>
                 <button
-                  type="submit"
-                  className={`px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1 text-xs font-semibold ${
-                    altoContraste 
-                      ? 'bg-yellow-400 text-black hover:bg-yellow-300' 
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                  type="button"
+                  onClick={handleResetToStandard}
+                  className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
                 >
-                  <Plus size={14} /> Salvar
+                  Acessar FalaFácil Balcão Padrão
                 </button>
-              </form>
-            )}
+              </div>
+            ) : (
+              /* CENÁRIO 4: FALAFÁCIL PADRÃO (CATEGORIAS GLOBAIS + FRASES CUSTOM) */
+              <div>
+                {/* Botão de retorno se estiver vendo categorias como fallback de um QR */}
+                {viewStandardFallback && qrProfile && (
+                  <div className="mb-2 flex items-center justify-between pb-1 border-b border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setViewStandardFallback(false)}
+                      className="text-xs font-bold text-indigo-600 flex items-center gap-1"
+                    >
+                      <ArrowLeft size={13} /> Voltar para {qrProfile.nome}
+                    </button>
+                  </div>
+                )}
 
-            {/* Grade de Frases / Respostas Rápidas */}
-            <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
-              {categoriaAtiva === 'personalizadas' ? (
-                frasesCustom.length === 0 ? (
-                  <p className={`text-center text-xs py-6 ${altoContraste ? 'text-yellow-500' : 'text-slate-400'}`}>
-                    Nenhuma frase salva ainda. Digite acima para criar.
-                  </p>
-                ) : (
-                  frasesCustom.map((frase, idx) => (
-                    <div key={idx} className={`flex items-center gap-1.5 border rounded-xl p-1 shadow-sm ${
-                      altoContraste ? 'bg-black border-yellow-500' : 'bg-white border-slate-200'
-                    }`}>
+                {/* Cabeçalho de Navegação de Categorias */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-xs font-bold uppercase tracking-wider ${
+                    altoContraste ? 'text-yellow-400' : 'text-slate-500'
+                  }`}>
+                    Minhas Respostas
+                  </span>
+                  <div className={`flex gap-1 p-1 rounded-xl ${
+                    altoContraste ? 'bg-zinc-900 border border-yellow-500' : 'bg-slate-200'
+                  }`}>
+                    <button 
+                      type="button"
+                      title="Serviços Públicos"
+                      onClick={() => setCategoriaAtiva('servicos')} 
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        categoriaAtiva === 'servicos' 
+                          ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                          : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                      }`}
+                      aria-label="Categoria Serviços Públicos"
+                    >
+                      <Building2 size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      title="Comércio e Farmácias"
+                      onClick={() => setCategoriaAtiva('comercio')} 
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        categoriaAtiva === 'comercio' 
+                          ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                          : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                      }`}
+                      aria-label="Categoria Comércio"
+                    >
+                      <ShoppingBag size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      title="Dúvidas de Comunicação"
+                      onClick={() => setCategoriaAtiva('ajuda')} 
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        categoriaAtiva === 'ajuda' 
+                          ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                          : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                      }`}
+                      aria-label="Categoria Ajuda e Diálogo"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      title="Minhas Frases Salvas"
+                      onClick={() => setCategoriaAtiva('personalizadas')} 
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        categoriaAtiva === 'personalizadas' 
+                          ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                          : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                      }`}
+                      aria-label="Categoria Frases Salvas"
+                    >
+                      <BookmarkCheck size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Área de Criação de Frases Personalizadas */}
+                {categoriaAtiva === 'personalizadas' && (
+                  <form onSubmit={handleAdicionarFraseCustom} className="flex gap-2 mb-3">
+                    <input
+                      type="text"
+                      maxLength={120}
+                      placeholder="Salvar nova frase frequente..."
+                      value={novaFraseCustom}
+                      onChange={(e) => setNovaFraseCustom(e.target.value)}
+                      className={`flex-1 border rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 ${
+                        altoContraste 
+                          ? 'bg-black border-yellow-400 text-yellow-300 focus:ring-yellow-300' 
+                          : 'bg-white border-slate-300 focus:ring-indigo-500 text-slate-800'
+                      }`}
+                      aria-label="Texto da nova frase personalizada"
+                    />
+                    <button
+                      type="submit"
+                      className={`px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1 text-xs font-semibold ${
+                        altoContraste 
+                          ? 'bg-yellow-400 text-black hover:bg-yellow-300' 
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      <Plus size={14} /> Salvar
+                    </button>
+                  </form>
+                )}
+
+                {/* Grade de Frases Globais */}
+                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
+                  {categoriaAtiva === 'personalizadas' ? (
+                    frasesCustom.length === 0 ? (
+                      <p className={`text-center text-xs py-6 ${altoContraste ? 'text-yellow-500' : 'text-slate-400'}`}>
+                        Nenhuma frase salva ainda. Digite acima para criar.
+                      </p>
+                    ) : (
+                      frasesCustom.map((frase, idx) => (
+                        <div key={idx} className={`flex items-center gap-1.5 border rounded-xl p-1 shadow-sm ${
+                          altoContraste ? 'bg-black border-yellow-500' : 'bg-white border-slate-200'
+                        }`}>
+                          <button
+                            type="button"
+                            onClick={() => falarTexto(frase)}
+                            className={`flex-1 text-left px-3 py-2 font-medium text-sm rounded-lg active:scale-[0.99] flex items-center justify-between ${
+                              altoContraste ? 'text-yellow-300 hover:bg-zinc-900' : 'text-slate-800 active:bg-indigo-50'
+                            }`}
+                            aria-label={`Falar: ${frase}`}
+                          >
+                            <span>{frase}</span>
+                            <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoverFraseCustom(idx)}
+                            className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Excluir frase"
+                            aria-label={`Excluir frase: ${frase}`}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))
+                    )
+                  ) : (
+                    CATEGORIAS_PADRAO[categoriaAtiva].map((frase, idx) => (
                       <button
+                        key={idx}
                         type="button"
                         onClick={() => falarTexto(frase)}
-                        className={`flex-1 text-left px-3 py-2 font-medium text-sm rounded-lg active:scale-[0.99] flex items-center justify-between ${
-                          altoContraste ? 'text-yellow-300 hover:bg-zinc-900' : 'text-slate-800 active:bg-indigo-50'
+                        className={`text-left border p-3 rounded-xl font-medium text-sm shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${
+                          altoContraste 
+                            ? 'bg-black border-yellow-500 text-yellow-300 hover:border-yellow-300' 
+                            : 'bg-white border-slate-200 hover:border-indigo-400 text-slate-800 active:bg-indigo-50'
                         }`}
                         aria-label={`Falar: ${frase}`}
                       >
                         <span>{frase}</span>
                         <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoverFraseCustom(idx)}
-                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
-                        title="Excluir frase"
-                        aria-label={`Excluir frase: ${frase}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))
-                )
-              ) : (
-                CATEGORIAS_PADRAO[categoriaAtiva].map((frase, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => falarTexto(frase)}
-                    className={`text-left border p-3 rounded-xl font-medium text-sm shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${
-                      altoContraste 
-                        ? 'bg-black border-yellow-500 text-yellow-300 hover:border-yellow-300' 
-                        : 'bg-white border-slate-200 hover:border-indigo-400 text-slate-800 active:bg-indigo-50'
-                    }`}
-                    aria-label={`Falar: ${frase}`}
-                  >
-                    <span>{frase}</span>
-                    <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
-                  </button>
-                ))
-              )}
-            </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input de Fala Avulsa / Digitação Livre */}
@@ -561,9 +724,19 @@ export default function FalaFacilApp() {
           </form>
         </section>
 
-        {/* Modais de Apoio PIX e Legalidade LGPD */}
+        {/* Modais de Apoio PIX, Legalidade LGPD, Painel Admin e Gerador Visual */}
         <PixModal isOpen={isPixOpen} onClose={() => setIsPixOpen(false)} />
         <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
+        <QRAdminModal 
+          isOpen={isQRAdminOpen} 
+          onClose={() => setIsQRAdminOpen(false)}
+          onSelectVisualQR={(item) => setSelectedVisualQR(item)}
+        />
+        <QRVisualGeneratorModal
+          isOpen={Boolean(selectedVisualQR)}
+          onClose={() => setSelectedVisualQR(null)}
+          qrItem={selectedVisualQR}
+        />
       </main>
     </div>
   );

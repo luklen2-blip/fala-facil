@@ -72,6 +72,20 @@ async function runLiveE2E() {
   }
   console.log('     ✅ API de PIX gerando payload EMV oficial com sucesso');
 
+  // 6. Módulo FalaFácil QR Code (Cenário Farmácia Central)
+  console.log('  6. Validando Módulo QR Code FalaFácil na Nuvem...');
+  const qrRes = await requestUrl('/api/qrcodes/farmacia-central');
+  if (qrRes.status !== 200) throw new Error(`API QR Code falhou: HTTP ${qrRes.status}`);
+  const qrJson = JSON.parse(qrRes.data);
+  if (qrJson.status !== 'ok' || !qrJson.qrcode || qrJson.qrcode.nome !== 'Farmácia Central') {
+    throw new Error('Perfil público da Farmácia Central não retornado');
+  }
+  console.log(`     ✅ Perfil QR Code Nuvem ativo (${qrJson.qrcode.nome} • ${qrJson.qrcode.segmento})`);
+
+  const qrSpaRes = await requestUrl('/qr/farmacia-central');
+  if (qrSpaRes.status !== 200) throw new Error(`Rota SPA /qr falhou: HTTP ${qrSpaRes.status}`);
+  console.log('     ✅ Rota pública de QR Code /qr/farmacia-central operacional na nuvem');
+
   console.log('\n🎉 ========================================================');
   console.log('🎉 HOMOLOGAÇÃO LIVE CLOUD CONCLUÍDA COM 100% DE SUCESSO!');
   console.log('🎉 Aplicação 24/7 totalmente operacional no ar!');
