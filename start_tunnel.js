@@ -1,6 +1,7 @@
 /**
  * Gerenciador de Túnel Seguro Cloudflare Quick Tunnel 24/7 — FalaFácil Balcão
  * Flag obrigatória --no-prechecks e pool de certificados CA.
+ * Auto-restart resiliente e logging em tunnel.log.
  */
 
 import { spawn, fork } from 'child_process';
@@ -16,6 +17,15 @@ const __dirname = path.dirname(__filename);
 const projectDir = __dirname;
 const cloudflaredExe = path.join(projectDir, 'cloudflared.exe');
 const caBundlePath = path.join(projectDir, 'ca-bundle.crt');
+const logFile = path.join(projectDir, 'tunnel.log');
+
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  try {
+    fs.appendFileSync(logFile, line, 'utf-8');
+  } catch (e) {}
+  console.log(msg);
+}
 
 // 1. Garantir existência de certificados CA confiáveis
 if (!fs.existsSync(caBundlePath) || fs.statSync(caBundlePath).size < 100) {
@@ -43,37 +53,34 @@ function checkPort(port) {
   });
 }
 
-async function main() {
-  console.log('🛡️  [FalaFácil Balcão] Iniciando Gerenciador de Nuvem 24/7...');
+let serverProcess = null;
+let activeTunnel = null;
+let isStopping = false;
 
-  let activePort = 3001;
+async function startServerIfNeeded() {
   const is3001 = await checkPort(3001);
-  let serverProcess = null;
+  if (is3001) return 3001;
 
-  if (is3001) {
-    activePort = 3001;
-    console.log(`✅ Servidor FalaFácil Balcão já ativo na porta ${activePort}`);
-  } else {
-    const is3000 = await checkPort(3000);
-    if (is3000) {
-      activePort = 3000;
-      console.log(`✅ Servidor FalaFácil Balcão já ativo na porta ${activePort}`);
-    } else {
-      // Inicia o servidor local automaticamente
-      activePort = 3001;
-      console.log(`🚀 Iniciando servidor FalaFácil Balcão na porta ${activePort}...`);
-      serverProcess = fork(path.join(projectDir, 'server.js'), [], {
-        env: { ...process.env, PORT: String(activePort) }
-      });
-      // Aguarda 1.5s para inicialização
-      await new Promise(r => setTimeout(r, 1500));
-    }
-  }
+  const is3000 = await checkPort(3000);
+  if (is3000) return 3000;
 
-  console.log(`📡 Estabelecendo túnel de nuvem global HTTPS para porta ${activePort}...`);
+  const port = 3001;
+  log(`🚀 Iniciando servidor FalaFácil Balcão na porta ${port}...`);
+  serverProcess = fork(path.join(projectDir, 'server.js'), [], {
+    env: { ...process.env, PORT: String(port) },
+    stdio: 'ignore'
+  });
+  await new Promise(r => setTimeout(r, 1500));
+  return port;
+}
+
+function launchTunnel(activePort) {
+  if (isStopping) return;
+
+  log(`📡 Estabelecendo túnel de nuvem global HTTPS para porta ${activePort}...`);
 
   if (!fs.existsSync(cloudflaredExe)) {
-    console.error('❌ cloudflared.exe não encontrado em:', cloudflaredExe);
+    log('❌ cloudflared.exe não encontrado em: ' + cloudflaredExe);
     process.exit(1);
   }
 
@@ -87,11 +94,16 @@ async function main() {
   ];
 
   const tunnel = spawn(cloudflaredExe, args);
+  activeTunnel = tunnel;
   let publicUrl = null;
   let hasTested = false;
 
   const handleOutput = (data) => {
     const text = data.toString();
+    try {
+      fs.appendFileSync(logFile, text, 'utf-8');
+    } catch (e) {}
+
     const match = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
     if (match && !publicUrl) {
       publicUrl = match[0];
@@ -122,31 +134,30 @@ Data de ativação: ${new Date().toLocaleString('pt-BR')}
           fs.writeFileSync(path.join(fallbackDesktop, 'URL-NUVEM-FALAFACIL-BALCAO.txt'), content, 'utf-8');
         }
       } catch (err) {
-        console.warn('Nota ao salvar atalho na Área de Trabalho:', err.message);
+        log('Nota ao salvar atalho na Área de Trabalho: ' + err.message);
       }
 
-      console.log(`\n===============================================================`);
-      console.log(`🚀 FALAFÁCIL BALCÃO DISPONÍVEL 24/7 NA NUVEM GLOBAL!`);
-      console.log(`🌐 URL Pública HTTPS:   ${publicUrl}`);
-      console.log(`🩺 Health Check Nuvem:  ${publicUrl}/api/health`);
-      console.log(`📱 Acesso Mobile / Web: Disponível para qualquer celular no mundo!`);
-      console.log(`💾 Atalho salvo na Área de Trabalho: URL-NUVEM-FALAFACIL-BALCAO.txt`);
-      console.log(`===============================================================\n`);
+      log(`\n===============================================================`);
+      log(`🚀 FALAFÁCIL BALCÃO DISPONÍVEL 24/7 NA NUVEM GLOBAL!`);
+      log(`🌐 URL Pública HTTPS:   ${publicUrl}`);
+      log(`🩺 Health Check Nuvem:  ${publicUrl}/api/health`);
+      log(`📱 Acesso Mobile / Web: Disponível para qualquer celular no mundo!`);
+      log(`💾 Atalho salvo na Área de Trabalho: URL-NUVEM-FALAFACIL-BALCAO.txt`);
+      log(`===============================================================\n`);
 
-      // Executa testes automatizados de homologação ao vivo na nuvem após 3s de propagação DNS
       if (!hasTested) {
         hasTested = true;
         setTimeout(() => {
-          console.log('🧪 Disparando bateria de testes ao vivo na nuvem (Live Cloud E2E)...');
+          log('🧪 Disparando bateria de testes ao vivo na nuvem (Live Cloud E2E)...');
           const testProc = spawn('node', [path.join(projectDir, 'tests', 'test_cloud_live.js'), publicUrl], {
             stdio: 'inherit'
           });
           testProc.on('exit', (code) => {
             if (code === 0) {
-              console.log('🎉 Deploy em nuvem 100% testado, homologado e ativo!');
+              log('🎉 Deploy em nuvem 100% testado, homologado e ativo!');
             }
           });
-        }, 3000);
+        }, 4000);
       }
     }
   };
@@ -155,13 +166,24 @@ Data de ativação: ${new Date().toLocaleString('pt-BR')}
   tunnel.stderr.on('data', handleOutput);
 
   tunnel.on('close', (code) => {
-    console.log(`Túnel encerrado com código: ${code}`);
-    if (serverProcess) serverProcess.kill();
+    log(`⚠️ Túnel Cloudflare finalizado (código: ${code}).`);
+    if (!isStopping) {
+      log('🔄 Reiniciando túnel automaticamente em 3 segundos para garantir disponibilidade 24/7...');
+      setTimeout(() => launchTunnel(activePort), 3000);
+    }
   });
+}
+
+async function main() {
+  log('🛡️  [FalaFácil Balcão] Iniciando Gerenciador de Nuvem 24/7...');
+  const port = await startServerIfNeeded();
+  log(`✅ Servidor FalaFácil Balcão operacional na porta ${port}`);
+  launchTunnel(port);
 
   const cleanup = () => {
-    console.log('Encerrando serviços de nuvem...');
-    tunnel.kill();
+    isStopping = true;
+    log('Encerrando serviços...');
+    if (activeTunnel) activeTunnel.kill();
     if (serverProcess) serverProcess.kill();
     process.exit(0);
   };
