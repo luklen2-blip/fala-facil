@@ -2,13 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Volume2, RotateCcw, Send, Building2, 
   ShoppingBag, MessageCircle, Plus, Trash2, BookmarkCheck, CheckCircle2,
-  Shield, Heart, Type, Eye, QrCode, Store, ArrowLeft, AlertCircle
+  Shield, Heart, Type, Eye, QrCode, Store, ArrowLeft, AlertCircle,
+  Tag, Download, ExternalLink, Settings, Sparkles, Copy, Check
 } from 'lucide-react';
 import PixModal from './components/PixModal.jsx';
 import LegalModal from './components/LegalModal.jsx';
 import QRAdminModal from './components/QRAdminModal.jsx';
 import QRVisualGeneratorModal from './components/QRVisualGeneratorModal.jsx';
-import { getQRCodeBySlug, sanitizeSlug } from './services/qrCodeService.js';
+import CommercialPlansModal from './components/CommercialPlansModal.jsx';
+import QRQuickViewModal from './components/QRQuickViewModal.jsx';
+import { getQRCodeBySlug, sanitizeSlug, generateQRDataUrl, buildPublicQRUrl } from './services/qrCodeService.js';
+import { PLANOS_COMERCIAIS, COPY_POSICIONAMENTO } from './data/qrTemplates.js';
 
 const CATEGORIAS_PADRAO = {
   servicos: [
@@ -71,6 +75,12 @@ export default function FalaFacilApp() {
 
   // Modais de Apoio e Conformidade LGPD
   const [isPixOpen, setIsPixOpen] = useState(false);
+  const [pixPlanData, setPixPlanData] = useState({ amount: '19.90', name: '' });
+  const [isCommercialOpen, setIsCommercialOpen] = useState(false);
+  const [isQRQuickOpen, setIsQRQuickOpen] = useState(false);
+  const [painelAba, setPainelAba] = useState('frases'); // 'frases' | 'qrcode' | 'planos'
+  const [inlineQRUrl, setInlineQRUrl] = useState('');
+  const [copiedInlineLink, setCopiedInlineLink] = useState(false);
   const [isLegalOpen, setIsLegalOpen] = useState(
     typeof window !== 'undefined' &&
     (window.location.pathname === '/termos' || window.location.pathname === '/privacidade')
@@ -78,6 +88,20 @@ export default function FalaFacilApp() {
 
   const recognitionRef = useRef(null);
   const shouldKeepListeningRef = useRef(false);
+
+  // Gera o QR Code inline para visualização imediata no balcão
+  useEffect(() => {
+    const targetSlug = (qrProfile && typeof qrProfile === 'object' && qrProfile.slug) ? qrProfile.slug : 'farmacia-central';
+    generateQRDataUrl(buildPublicQRUrl(targetSlug), { width: 320, margin: 2 }).then(url => {
+      setInlineQRUrl(url);
+    });
+  }, [qrProfile]);
+
+  const handleSelectPlan = (nomePlano, valorNumerico) => {
+    setPixPlanData({ amount: valorNumerico, name: `Plano ${nomePlano}` });
+    setIsCommercialOpen(false);
+    setIsPixOpen(true);
+  };
 
   // Mapeamento de escalas de fonte
   const fontScales = ['text-lg', 'text-xl', 'text-2xl'];
@@ -310,21 +334,52 @@ export default function FalaFacilApp() {
             </div>
 
             {/* Barra de Ferramentas de Acessibilidade & Gestão */}
-            <div className="flex items-center gap-1.5">
-              {/* Painel Administrativo de QR Codes */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {/* Botão QR Code em destaque */}
+              <button 
+                type="button"
+                onClick={() => setIsQRQuickOpen(true)}
+                title="QR Code para o Balcão"
+                className={`px-2 py-1 rounded-lg transition-all flex items-center gap-1 text-xs font-black shadow-sm ${
+                  altoContraste 
+                    ? 'bg-yellow-400 text-black' 
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+                aria-label="Abrir QR Code do Balcão"
+              >
+                <QrCode size={13} />
+                <span className="text-[11px]">QR Code</span>
+              </button>
+
+              {/* Botão Planos e Valores */}
+              <button 
+                type="button"
+                onClick={() => setIsCommercialOpen(true)}
+                title="Planos Comerciais a partir de R$ 19,90"
+                className={`px-2 py-1 rounded-lg transition-all flex items-center gap-1 text-xs font-black shadow-sm ${
+                  altoContraste 
+                    ? 'bg-yellow-300 text-black' 
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
+                aria-label="Ver Planos e Valores"
+              >
+                <Tag size={13} />
+                <span className="text-[11px]">Valores</span>
+              </button>
+
+              {/* Painel Administrativo de Gestão */}
               <button 
                 type="button"
                 onClick={() => setIsQRAdminOpen(true)}
-                title="Meus QR Codes FalaFácil (Painel do Estabelecimento)"
-                className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold ${
+                title="Gerenciar Meus QR Codes"
+                className={`p-1.5 rounded-lg transition-colors ${
                   altoContraste 
-                    ? 'bg-yellow-400 text-black' 
-                    : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+                    ? 'bg-zinc-800 text-yellow-300 border border-yellow-400' 
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
-                aria-label="Abrir Painel QR Codes"
+                aria-label="Configurar QR Codes"
               >
-                <QrCode size={14} />
-                <span className="hidden sm:inline text-[11px]">QR Codes</span>
+                <Settings size={14} />
               </button>
 
               {/* Zoom de Fonte */}
@@ -364,19 +419,6 @@ export default function FalaFacilApp() {
                 aria-label="Termos e LGPD"
               >
                 <Shield size={15} />
-              </button>
-
-              {/* Apoio Pix */}
-              <button 
-                type="button"
-                onClick={() => setIsPixOpen(true)}
-                title="Apoio Pix Bacen"
-                className={`p-1 transition-colors ${
-                  altoContraste ? 'text-yellow-400' : 'text-slate-400 hover:text-emerald-600'
-                }`}
-                aria-label="Apoiar projeto via Pix"
-              >
-                <Heart size={15} />
               </button>
 
               {/* Limpar Conversa */}
@@ -437,9 +479,218 @@ export default function FalaFacilApp() {
         <section className={`flex-[1.3] p-4 flex flex-col justify-between overflow-hidden ${
           altoContraste ? 'bg-zinc-950 text-yellow-300' : 'bg-slate-50'
         }`}>
-          <div>
-            {/* CENÁRIO 1: QR CODE ATIVO ESPECÍFICO DO ESTABELECIMENTO */}
-            {isProfileActive ? (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* Navegação Rápida do Balcão: Frases, QR Code no Balcão, Planos & Valores */}
+            <div className="flex items-center justify-between gap-1 mb-2 bg-slate-200/80 p-1 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => setPainelAba('frases')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  painelAba === 'frases'
+                    ? (altoContraste ? 'bg-yellow-400 text-black font-black' : 'bg-white text-indigo-900 shadow-sm')
+                    : (altoContraste ? 'text-yellow-400 hover:text-yellow-200' : 'text-slate-600 hover:text-slate-900')
+                }`}
+              >
+                <MessageCircle size={13} />
+                <span>Frases</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPainelAba('qrcode')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  painelAba === 'qrcode'
+                    ? (altoContraste ? 'bg-yellow-400 text-black font-black' : 'bg-white text-indigo-900 shadow-sm')
+                    : (altoContraste ? 'text-yellow-400 hover:text-yellow-200' : 'text-slate-600 hover:text-slate-900')
+                }`}
+              >
+                <QrCode size={13} />
+                <span>QR Code</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPainelAba('planos')}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 ${
+                  painelAba === 'planos'
+                    ? (altoContraste ? 'bg-yellow-400 text-black font-black' : 'bg-white text-emerald-900 shadow-sm')
+                    : (altoContraste ? 'text-yellow-400 hover:text-yellow-200' : 'text-slate-600 hover:text-slate-900')
+                }`}
+              >
+                <Tag size={13} />
+                <span>Planos (R$ 19,90)</span>
+              </button>
+            </div>
+
+            {/* ABA: QR CODE NO BALCÃO */}
+            {painelAba === 'qrcode' && (
+              <div className="flex-1 overflow-y-auto space-y-3 py-1 text-center">
+                <div className={`p-3.5 rounded-2xl border text-center ${
+                  altoContraste ? 'bg-zinc-900 border-yellow-400 text-yellow-300' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                  <h3 className="font-black text-sm uppercase tracking-wide">
+                    QR Code Oficial do Balcão
+                  </h3>
+                  <p className={`text-xs mt-0.5 ${altoContraste ? 'text-yellow-400' : 'text-slate-600'}`}>
+                    Aponte a câmera do celular para abrir o FalaFácil direto neste ponto
+                  </p>
+
+                  <div className="my-2.5 flex justify-center">
+                    {inlineQRUrl ? (
+                      <img 
+                        src={inlineQRUrl} 
+                        alt="QR Code do Balcão" 
+                        className="w-44 h-44 object-contain rounded-xl p-2 bg-white border border-slate-200 shadow-md"
+                      />
+                    ) : (
+                      <div className="w-44 h-44 bg-slate-100 flex items-center justify-center rounded-xl text-xs text-slate-400">
+                        Gerando QR Code...
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Link com Copiar */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200 mb-2.5">
+                    <span className="text-[10px] font-mono text-slate-600 truncate flex-1 px-2 text-left">
+                      {buildPublicQRUrl((qrProfile && qrProfile.slug) || 'farmacia-central')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const url = buildPublicQRUrl((qrProfile && qrProfile.slug) || 'farmacia-central');
+                        try {
+                          await navigator.clipboard.writeText(url);
+                          setCopiedInlineLink(true);
+                          setTimeout(() => setCopiedInlineLink(false), 2000);
+                        } catch {
+                          alert(`Link: ${url}`);
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shrink-0 flex items-center gap-1"
+                    >
+                      {copiedInlineLink ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedInlineLink ? 'Copiado' : 'Copiar'}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const item = (isProfileActive && qrProfile) ? qrProfile : { slug: 'farmacia-central', nome: 'Farmácia Central', segmento: 'Farmácia' };
+                        setSelectedVisualQR(item);
+                      }}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+                        altoContraste ? 'bg-yellow-400 text-black' : 'bg-slate-900 hover:bg-slate-800 text-white'
+                      }`}
+                    >
+                      <Download size={14} />
+                      <span>Placa de Balcão</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsQRAdminOpen(true)}
+                      className={`py-2 px-3 rounded-xl font-bold text-xs border transition-all ${
+                        altoContraste ? 'border-yellow-400 text-yellow-300' : 'border-slate-300 text-slate-700 bg-slate-50 hover:bg-slate-100'
+                      }`}
+                    >
+                      Configurar QR
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ABA: PLANOS & VALORES */}
+            {painelAba === 'planos' && (
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                <div className={`p-2.5 rounded-xl border text-center ${
+                  altoContraste ? 'bg-zinc-900 border-yellow-400 text-yellow-300' : 'bg-indigo-50 border-indigo-200'
+                }`}>
+                  <h4 className="font-extrabold text-xs text-indigo-950">{COPY_POSICIONAMENTO.chamadaPrincipal}</h4>
+                  <p className="text-[10px] text-indigo-800 mt-0.5">{COPY_POSICIONAMENTO.selo}</p>
+                </div>
+
+                {PLANOS_COMERCIAIS.map((plano) => {
+                  const valorLimpo = plano.preco.replace('R$', '').split('/')[0].trim().replace(',', '.');
+                  const isPop = plano.badge === 'Popular';
+                  return (
+                    <div 
+                      key={plano.id}
+                      className={`p-3 rounded-2xl border transition-all ${
+                        altoContraste 
+                          ? 'bg-black border-yellow-500 text-yellow-300' 
+                          : isPop 
+                          ? 'bg-gradient-to-br from-indigo-50/60 to-white border-indigo-300 ring-1 ring-indigo-400/30 shadow-sm'
+                          : 'bg-white border-slate-200 shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-black text-sm">{plano.nome}</span>
+                            {plano.badge && (
+                              <span className="px-1.5 py-0.2 bg-indigo-600 text-white text-[9px] font-bold rounded-full">
+                                {plano.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-indigo-600 font-bold mt-0.5">{plano.destaque}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-base text-slate-900">{plano.preco}</span>
+                          <p className="text-[10px] text-slate-400">{plano.cobranca}</p>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1">{plano.descricao}</p>
+                      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[10px] text-emerald-700 font-bold">Ativação Instantânea</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPlan(plano.nome, valorLimpo)}
+                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm active:scale-95 transition-all"
+                        >
+                          Contratar via Pix
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ABA: FRASES RÁPIDAS (PADRÃO / ESTABELECIMENTO) */}
+            {painelAba === 'frases' && (
+              <div className="flex-1 overflow-y-auto">
+                {/* Banner Indicativo de QR Code e Valores */}
+                <div className={`px-3 py-1.5 rounded-xl border flex items-center justify-between mb-2 shadow-sm ${
+                  altoContraste ? 'bg-zinc-900 border-yellow-400 text-yellow-300' : 'bg-indigo-50 border-indigo-200 text-indigo-950'
+                }`}>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider opacity-75 block">Balcão Acessível</span>
+                    <span className="text-xs font-bold">📲 QR Code Ativo • Planos a partir de R$ 19,90</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPainelAba('qrcode')}
+                      className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-0.5 rounded-lg shadow-sm"
+                    >
+                      Ver QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPainelAba('planos')}
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2 py-0.5 rounded-lg shadow-sm"
+                    >
+                      Valores
+                    </button>
+                  </div>
+                </div>
+
+                {/* CENÁRIO 1: QR CODE ATIVO ESPECÍFICO DO ESTABELECIMENTO */}
+                {isProfileActive ? (
               <div className="space-y-3">
                 {/* Banner de Boas-Vindas do Estabelecimento */}
                 <div className={`p-3 rounded-2xl border transition-all ${
@@ -692,9 +943,11 @@ export default function FalaFacilApp() {
               </div>
             )}
           </div>
+        )}
+      </div>
 
           {/* Input de Fala Avulsa / Digitação Livre */}
-          <form onSubmit={handleEnviarManual} className="flex gap-2 mt-3">
+          <form onSubmit={handleEnviarManual} className="flex gap-2 mt-3 shrink-0">
             <input
               type="text"
               maxLength={200}
@@ -724,8 +977,25 @@ export default function FalaFacilApp() {
           </form>
         </section>
 
-        {/* Modais de Apoio PIX, Legalidade LGPD, Painel Admin e Gerador Visual */}
-        <PixModal isOpen={isPixOpen} onClose={() => setIsPixOpen(false)} />
+        {/* Modais de Apoio PIX, Legalidade LGPD, Planos Comerciais e QR Codes */}
+        <PixModal 
+          isOpen={isPixOpen} 
+          onClose={() => setIsPixOpen(false)} 
+          initialAmount={pixPlanData.amount}
+          planName={pixPlanData.name}
+        />
+        <CommercialPlansModal
+          isOpen={isCommercialOpen}
+          onClose={() => setIsCommercialOpen(false)}
+          onSelectPlan={handleSelectPlan}
+        />
+        <QRQuickViewModal
+          isOpen={isQRQuickOpen}
+          onClose={() => setIsQRQuickOpen(false)}
+          onOpenPlacard={(item) => setSelectedVisualQR(item)}
+          onOpenAdmin={() => setIsQRAdminOpen(true)}
+          activeProfile={qrProfile}
+        />
         <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
         <QRAdminModal 
           isOpen={isQRAdminOpen} 

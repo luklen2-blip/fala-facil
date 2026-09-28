@@ -2,11 +2,17 @@ import React, { useState } from 'react';
 import { X, Copy, Check, QrCode, Heart, Sparkles } from 'lucide-react';
 import { generatePixPayload, getPixQrCodeUrl } from '../services/pixService.js';
 
-export default function PixModal({ isOpen, onClose }) {
+export default function PixModal({ isOpen, onClose, initialAmount = '19.90', planName = '' }) {
   if (!isOpen) return null;
 
-  const [amount, setAmount] = useState('10.00');
+  const [amount, setAmount] = useState(initialAmount || '19.90');
   const [copied, setCopied] = useState(false);
+
+  React.useEffect(() => {
+    if (initialAmount) {
+      setAmount(initialAmount);
+    }
+  }, [initialAmount, isOpen]);
 
   const pixKey = 'contato@falafacil.com.br';
   const payload = generatePixPayload({
@@ -42,8 +48,12 @@ export default function PixModal({ isOpen, onClose }) {
             <Heart className="w-4 h-4 fill-emerald-500" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-base">Apoie o FalaFácil</h3>
-            <p className="text-xs text-slate-500">Mantenha a ferramenta viva e acessível</p>
+            <h3 className="font-bold text-slate-900 text-base">
+              {planName ? `Contratar ${planName}` : 'Apoie o FalaFácil'}
+            </h3>
+            <p className="text-xs text-slate-500">
+              {planName ? 'Ativação imediata via Pix Oficial Bacen' : 'Mantenha a ferramenta viva e acessível'}
+            </p>
           </div>
         </div>
 
