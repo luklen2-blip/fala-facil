@@ -1,9 +1,9 @@
 FROM node:20-alpine
 WORKDIR /usr/src/app
 
-# Instalação isolada de dependências
+# Instalação de dependências
 COPY package*.json ./
-RUN npm ci --omit=dev || npm install --omit=dev
+RUN npm install
 
 # Cópia do código-fonte e bundle de produção
 COPY . .
