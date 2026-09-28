@@ -143,9 +143,9 @@ const server = http.createServer((req, res) => {
 });
 
 function startServer(port) {
-  server.listen(port, () => {
-    console.log(`🚀 [FalaFácil Balcão] Servidor ativo em http://localhost:${port}`);
-    console.log(`🩺 Health check disponível em http://localhost:${port}/api/health`);
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 [FalaFácil Balcão] Servidor ativo em http://0.0.0.0:${port}`);
+    console.log(`🩺 Health check disponível em http://0.0.0.0:${port}/api/health`);
     if (process.env.AUTO_OPEN === 'true') {
       exec(`start http://localhost:${port}`);
     }
