@@ -162,8 +162,9 @@ function serveStatic(res, filePath) {
     const baseName = path.basename(filePath);
     const isServiceWorker = baseName === 'sw.js' || baseName === 'manifest.json';
     const isImmutable = filePath.includes('dist/assets') || filePath.includes('dist\\assets');
-    const cacheControl = (ext === '.html' || isServiceWorker)
-      ? 'no-cache, no-store, must-revalidate, max-age=0'
+    const isNoCacheTarget = ext === '.html' || isServiceWorker;
+    const cacheControl = isNoCacheTarget
+      ? 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
       : isImmutable
       ? 'public, max-age=31536000, immutable'
       : 'public, max-age=3600';
@@ -172,8 +173,9 @@ function serveStatic(res, filePath) {
       'Content-Type': contentType,
       'Content-Length': stat.size,
       'Cache-Control': cacheControl,
-      'Pragma': isServiceWorker || ext === '.html' ? 'no-cache' : 'public',
-      'Expires': isServiceWorker || ext === '.html' ? '0' : undefined
+      'Pragma': isNoCacheTarget ? 'no-cache' : 'public',
+      'Expires': isNoCacheTarget ? '0' : undefined,
+      'Surrogate-Control': isNoCacheTarget ? 'no-store' : undefined
     });
     fs.createReadStream(filePath).pipe(res);
     return true;

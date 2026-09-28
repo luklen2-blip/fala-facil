@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="theme-color" content="#1e40af" />
     <meta name="description" content="FalaFácil Balcão — Ferramenta assistiva para atendimento imediato em balcões entre pessoas ouvintes e surdas." />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -10,6 +13,29 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <title>FalaFácil Balcão — Comunicação Acessível</title>
+
+    <!-- Script de Auto-Atualização Imediata (Sem Necessidade de Ctrl+F5) -->
+    <script>
+      (function() {
+        var BUILD_VERSION = '2.1.2';
+        try {
+          var current = localStorage.getItem('falafacil_active_version');
+          if (current !== BUILD_VERSION) {
+            localStorage.setItem('falafacil_active_version', BUILD_VERSION);
+            if ('caches' in window) {
+              caches.keys().then(function(keys) {
+                keys.forEach(function(k) { caches.delete(k); });
+              });
+            }
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                regs.forEach(function(r) { r.unregister(); });
+              });
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-Djfx4Uq-.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-B3uBzAlQ.css">
   </head>
