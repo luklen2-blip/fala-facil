@@ -163,20 +163,24 @@ function serveStatic(res, filePath) {
     const isServiceWorker = baseName === 'sw.js' || baseName === 'manifest.json';
     const isImmutable = filePath.includes('dist/assets') || filePath.includes('dist\\assets');
     const isNoCacheTarget = ext === '.html' || isServiceWorker;
-    const cacheControl = isNoCacheTarget
-      ? 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0'
-      : isImmutable
-      ? 'public, max-age=31536000, immutable'
-      : 'public, max-age=3600';
 
-    res.writeHead(200, {
+    const headers = {
       'Content-Type': contentType,
-      'Content-Length': stat.size,
-      'Cache-Control': cacheControl,
-      'Pragma': isNoCacheTarget ? 'no-cache' : 'public',
-      'Expires': isNoCacheTarget ? '0' : undefined,
-      'Surrogate-Control': isNoCacheTarget ? 'no-store' : undefined
-    });
+      'Content-Length': stat.size
+    };
+
+    if (isNoCacheTarget) {
+      headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0';
+      headers['Pragma'] = 'no-cache';
+      headers['Expires'] = '0';
+      headers['Surrogate-Control'] = 'no-store';
+    } else if (isImmutable) {
+      headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    } else {
+      headers['Cache-Control'] = 'public, max-age=3600';
+    }
+
+    res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
     return true;
   } catch (err) {
@@ -252,6 +256,7 @@ const server = http.createServer((req, res) => {
     }));
     return;
   }
+
 
   // 2.1 Endpoints de QR Code Personalizado FalaFácil
   if (pathname === '/api/qrcodes' && req.method === 'GET') {

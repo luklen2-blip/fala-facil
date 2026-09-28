@@ -129,6 +129,18 @@ async function runAllTests() {
   assert.strictEqual(homeRes.status, 200, 'Home deve responder HTTP 200');
   assert.ok(homeRes.body.includes('FalaFácil'), 'Home deve conter o título da aplicação');
   console.log('  ✅ Servidor HTTP entregando aplicação SPA com sucesso');
+
+  // Validação estrita de entrega dos assets estáticos compilados (JS/CSS)
+  const distAssets = fs.existsSync(path.join(__dirname, '..', 'dist', 'assets'))
+    ? fs.readdirSync(path.join(__dirname, '..', 'dist', 'assets'))
+    : [];
+  for (const assetFile of distAssets) {
+    const assetRes = await httpReq(`/assets/${assetFile}`);
+    assert.strictEqual(assetRes.status, 200, `Asset /assets/${assetFile} deve responder 200 OK`);
+    const expectedType = assetFile.endsWith('.js') ? 'application/javascript' : 'text/css';
+    assert.ok(assetRes.headers['content-type'].includes(expectedType), `Content-Type de ${assetFile} inválido`);
+  }
+  console.log('  ✅ Todos os assets compilados (JS e CSS) respondendo 200 OK com Content-Type correto');
   passed++;
 
   // TESTE 5: Auditoria de Segurança OWASP e Proteção Anti-Traversal

@@ -1,17 +1,16 @@
 /**
  * Service Worker — FalaFácil Balcão
- * Versão: 2.1.2-auto-update
- * Estratégia: Network-First total para HTML. Atualização 100% autônoma sem necessidade de Ctrl+F5.
+ * Versão: 2.1.3-stable
+ * Estratégia: Network-First total para navegação HTML, Cache-First para assets versionados com hash.
  */
 
-const CACHE_NAME = 'falafacil-v2.1.2-auto-update';
+const CACHE_NAME = 'falafacil-v2.1.3-stable';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg'
 ];
 
 self.addEventListener('install', (event) => {
-  // Ativação forçada imediata
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -26,22 +25,11 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[SW] Limpando cache antigo para atualização automática:', key);
             return caches.delete(key);
           }
         })
       );
     }).then(() => self.clients.claim())
-      .then(() => {
-        // Notifica e recarrega todas as abas abertas sem exigir Ctrl+F5 do usuário
-        return self.clients.matchAll({ type: 'window' }).then((clients) => {
-          clients.forEach((client) => {
-            if (client.url && 'navigate' in client) {
-              client.navigate(client.url);
-            }
-          });
-        });
-      })
   );
 });
 
@@ -65,7 +53,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Navegação e páginas HTML: SEMPRE NETWORK-FIRST com bypass de cache do navegador
+  // 1. Navegação e páginas HTML: SEMPRE NETWORK-FIRST
   const isHtmlRequest = event.request.mode === 'navigate' || 
                         event.request.headers.get('accept')?.includes('text/html') ||
                         url.pathname.endsWith('.html') ||
@@ -74,7 +62,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isHtmlRequest) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' })
+      fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
@@ -85,7 +73,6 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Se estiver 100% offline, tenta a cópia local
           return caches.match(event.request).then((cached) => {
             return cached || caches.match('/index.html');
           });
@@ -94,7 +81,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Arquivos Estáticos com Hash (/assets/index-*.js, .css)
+  // 2. Arquivos Estáticos com Hash (/assets/*) e outros estáticos
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

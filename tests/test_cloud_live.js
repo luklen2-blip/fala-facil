@@ -48,6 +48,33 @@ async function runLiveE2E() {
   if (!home.data.includes('FalaFácil')) throw new Error('Título da aplicação ausente na Home');
   console.log('     ✅ Interface web SPA carregada com sucesso');
 
+  // 2.1 Validação de Bundles JS e CSS
+  console.log('  2.1. Validando integridade de assets JavaScript e CSS...');
+  const scriptMatches = [...home.data.matchAll(/src=["'](\/assets\/[^"']+)["']/g)];
+  const linkMatches = [...home.data.matchAll(/href=["'](\/assets\/[^"']+)["']/g)];
+  const assetPaths = [...scriptMatches.map(m => m[1]), ...linkMatches.map(m => m[1])];
+
+  if (assetPaths.length === 0) {
+    console.log('     ⚠️  Nenhum asset /assets/* encontrado no HTML (modo dev/SSR)');
+  } else {
+    for (const assetPath of assetPaths) {
+      const assetRes = await requestUrl(assetPath);
+      if (assetRes.status !== 200) {
+        throw new Error(`Asset ${assetPath} retornou HTTP ${assetRes.status} em vez de 200 OK!`);
+      }
+      const ctype = assetRes.headers['content-type'] || '';
+      const isJs = assetPath.endsWith('.js');
+      const isCss = assetPath.endsWith('.css');
+      if (isJs && !ctype.includes('javascript')) {
+        throw new Error(`Asset ${assetPath} Content-Type incorreto: ${ctype}`);
+      }
+      if (isCss && !ctype.includes('css')) {
+        throw new Error(`Asset ${assetPath} Content-Type incorreto: ${ctype}`);
+      }
+      console.log(`     ✅ Asset ${assetPath} respondendo 200 OK (${ctype.split(';')[0]})`);
+    }
+  }
+
   // 3. Manifesto PWA
   console.log('  3. Validando Manifesto PWA...');
   const manifest = await requestUrl('/manifest.json');
