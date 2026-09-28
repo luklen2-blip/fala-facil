@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-text: #0f172a;
+  --app-border: #e2e8f0;
+}
+
+/* Modo Alto Contraste para Baixa Visão */
+.high-contrast {
+  --app-bg: #000000 !important;
+  --app-surface: #121212 !important;
+  --app-text: #ffff00 !important; /* Amarelo puro */
+  --app-border: #ffff00 !important;
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+
+.high-contrast button {
+  border: 2px solid #ffff00 !important;
+  color: #ffff00 !important;
+  background-color: #000000 !important;
+}
+
+.high-contrast input {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+  border: 2px solid #ffff00 !important;
+}
+
+/* Scrollbar sutil para listas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* Animações de ondas de áudio */
+@keyframes audioWave {
+  0%, 100% { height: 8px; }
+  50% { height: 28px; }
+}
+
+.audio-bar {
+  animation: audioWave 1s ease-in-out infinite;
+}
+.audio-bar:nth-child(1) { animation-delay: 0.1s; }
+.audio-bar:nth-child(2) { animation-delay: 0.3s; }
+.audio-bar:nth-child(3) { animation-delay: 0.5s; }
+.audio-bar:nth-child(4) { animation-delay: 0.2s; }
+.audio-bar:nth-child(5) { animation-delay: 0.4s; }

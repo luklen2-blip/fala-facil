@@ -1,0 +1,41 @@
+{
+  "name": "falafacil-balcao",
+  "version": "2.0.0",
+  "description": "FalaFácil Balcão — Comunicação imediata e acessível em balcões entre atendentes ouvintes e pessoas surdas.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "test": "node tests/run_all.js",
+    "test:cloud": "node tests/test_cloud_live.js"
+  },
+  "keywords": [
+    "acessibilidade",
+    "surdos",
+    "atendimento",
+    "balcao",
+    "pwa",
+    "speech-to-text",
+    "text-to-speech",
+    "inclusao"
+  ],
+  "author": "FalaFácil Team",
+  "license": "MIT",
+  "dependencies": {
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.11",
+    "vite": "^5.4.6"
+  }
+}

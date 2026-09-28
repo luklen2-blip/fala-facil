@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: falafacil-balcao
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build && node tests/run_all.js
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
