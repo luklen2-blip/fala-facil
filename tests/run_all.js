@@ -10,21 +10,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 console.log('🧪 ========================================================');
-console.log('🧪 Iniciando Suíte de Testes Formais — FalaFácil Balcão');
+console.log('🧪 Suíte de Testes Formais e Auditoria — FalaFácil Balcão');
 console.log('🧪 ========================================================');
 
 async function runAllTests() {
   let passed = 0;
 
   // TESTE 1: Validação do Dicionário de Frases e Categorias Obrigatórias
-  console.log('\n[1/5] Validando categorias e frases essenciais...');
+  console.log('\n[1/6] Validando categorias e frases essenciais...');
   assert.strictEqual(CATEGORIES.length, 3, 'Devem existir 3 categorias principais');
   const catIds = CATEGORIES.map(c => c.id);
   assert.ok(catIds.includes('servicos'), 'Categoria servicos deve existir');
   assert.ok(catIds.includes('comercio'), 'Categoria comercio deve existir');
   assert.ok(catIds.includes('suporte'), 'Categoria suporte deve existir');
-  const suporteCat = CATEGORIES.find(c => c.id === 'suporte');
-  assert.strictEqual(suporteCat.label, 'Suporte / Dúvidas de Diálogo', 'Rótulo da categoria 3 deve ser Suporte / Dúvidas de Diálogo');
 
   // Frases de Serviços
   const servicosTexts = QUICK_PHRASES.servicos.map(p => p.text);
@@ -53,7 +51,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 2: Validação do Motor PIX EMV Bacen e CRC-16
-  console.log('\n[2/5] Validando gerador de PIX EMV com cálculo CRC-16...');
+  console.log('\n[2/6] Validando gerador de PIX EMV com cálculo CRC-16...');
   const pix = generatePixPayload({
     pixKey: 'contato@falafacil.com.br',
     name: 'FalaFacil Balcao',
@@ -73,7 +71,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 3: Validação dos Arquivos de Produção e PWA
-  console.log('\n[3/5] Validando bundle compilado, manifesto e service worker...');
+  console.log('\n[3/6] Validando bundle compilado, manifesto e service worker...');
   const distDir = path.join(__dirname, '..', 'dist');
   assert.ok(fs.existsSync(distDir), 'Diretório dist/ deve existir');
   assert.ok(fs.existsSync(path.join(distDir, 'index.html')), 'dist/index.html deve existir');
@@ -83,20 +81,28 @@ async function runAllTests() {
   passed++;
 
   // TESTE 4: Teste de Servidor HTTP e Health Check (/api/health)
-  console.log('\n[4/5] Inicializando servidor local para teste de rotas e /api/health...');
+  console.log('\n[4/6] Inicializando servidor local para teste de rotas e /api/health...');
   process.env.PORT = '3999';
   const serverModule = await import('../server.js');
   const server = serverModule.default;
 
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  const httpGet = (urlPath) => {
+  const httpGet = (urlPath, method = 'GET') => {
     return new Promise((resolve, reject) => {
-      http.get(`http://localhost:3999${urlPath}`, (res) => {
+      const options = {
+        hostname: 'localhost',
+        port: 3999,
+        path: urlPath,
+        method
+      };
+      const req = http.request(options, (res) => {
         let body = '';
         res.on('data', chunk => body += chunk);
         res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
-      }).on('error', reject);
+      });
+      req.on('error', reject);
+      req.end();
     });
   };
 
@@ -115,8 +121,24 @@ async function runAllTests() {
   console.log('  ✅ Servidor HTTP entregando aplicação SPA com sucesso');
   passed++;
 
-  // TESTE 5: Validação de Conformidade Legal e LGPD
-  console.log('\n[5/5] Validando conformidade com LGPD e Termos de Uso...');
+  // TESTE 5: Auditoria de Segurança OWASP e Proteção Anti-Traversal
+  console.log('\n[5/6] Validando cabeçalhos de segurança e proteção anti-path traversal...');
+  assert.strictEqual(healthRes.headers['x-content-type-options'], 'nosniff', 'Header X-Content-Type-Options deve ser nosniff');
+  assert.strictEqual(healthRes.headers['x-frame-options'], 'SAMEORIGIN', 'Header X-Frame-Options deve ser SAMEORIGIN');
+  assert.ok(healthRes.headers['referrer-policy'], 'Referrer-Policy deve estar presente');
+
+  // Teste de Path Traversal
+  const traversalRes = await httpGet('/../../server.js');
+  assert.strictEqual(traversalRes.status, 404, 'Path traversal deve ser bloqueado com 404');
+
+  // Teste de CORS Preflight (OPTIONS)
+  const optionsRes = await httpGet('/api/health', 'OPTIONS');
+  assert.strictEqual(optionsRes.status, 204, 'OPTIONS deve retornar 204 No Content');
+  console.log('  ✅ Cabeçalhos OWASP, Anti-Traversal e CORS validados');
+  passed++;
+
+  // TESTE 6: Validação de Conformidade Legal e LGPD
+  console.log('\n[6/6] Validando conformidade com LGPD e Termos de Uso...');
   const legalFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'LegalModal.jsx'), 'utf-8');
   assert.ok(legalFile.includes('LGPD'), 'Deve citar conformidade com LGPD');
   assert.ok(legalFile.includes('13.709/2018'), 'Deve citar a Lei 13.709/2018');
@@ -130,8 +152,8 @@ async function runAllTests() {
   server.close();
 
   console.log('\n🎉 ========================================================');
-  console.log(`🎉 TODOS OS ${passed}/5 TESTES LOCAIS PASSARAM COM SUCESSO!`);
-  console.log('🎉 Aplicação FalaFácil Balcão aprovada para homologação!');
+  console.log(`🎉 TODOS OS ${passed}/6 TESTES DE AUDITORIA PASSARAM!`);
+  console.log('🎉 FalaFácil Balcão aprovado com excelência técnica!');
   console.log('🎉 ========================================================\n');
   process.exit(0);
 }

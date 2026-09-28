@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Volume2, RotateCcw, Send, Building2, 
   ShoppingBag, MessageCircle, Plus, Trash2, BookmarkCheck, CheckCircle2,
-  Shield, Heart 
+  Shield, Heart, Type, Eye 
 } from 'lucide-react';
 import PixModal from './components/PixModal.jsx';
 import LegalModal from './components/LegalModal.jsx';
@@ -37,7 +37,11 @@ export default function FalaFacilApp() {
   const [textoManual, setTextoManual] = useState('');
   const [categoriaAtiva, setCategoriaAtiva] = useState('servicos');
   
-  // Frases personalizadas salvas no navegador
+  // Acessibilidade: Escala de Fonte e Modo Alto Contraste
+  const [fontSizeIndex, setFontSizeIndex] = useState(1); // 0 = Padrão (lg), 1 = Grande (xl), 2 = Extra Grande (2xl)
+  const [altoContraste, setAltoContraste] = useState(false);
+
+  // Frases personalizadas salvas no navegador (com fallback resiliente)
   const [frasesCustom, setFrasesCustom] = useState(() => {
     try {
       const salvas = typeof window !== 'undefined' ? localStorage.getItem('falafacil_frases_custom') : null;
@@ -64,19 +68,24 @@ export default function FalaFacilApp() {
   );
 
   const recognitionRef = useRef(null);
+  const shouldKeepListeningRef = useRef(false);
+
+  // Mapeamento de escalas de fonte
+  const fontScales = ['text-lg', 'text-xl', 'text-2xl'];
+  const fontLabels = ['A', 'A+', 'A++'];
 
   // Salva no localStorage sempre que as frases customizadas mudarem
   useEffect(() => {
     try {
       localStorage.setItem('falafacil_frases_custom', JSON.stringify(frasesCustom));
     } catch (e) {
-      console.warn('Erro ao salvar no localStorage:', e);
+      console.warn('Nota: localStorage não disponível:', e);
     }
   }, [frasesCustom]);
 
-  // Inicialização do Reconhecimento de Fala Nativo
+  // Inicialização do Reconhecimento de Fala Nativo com Reconexão Resiliente
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
@@ -84,55 +93,98 @@ export default function FalaFacilApp() {
       recognition.lang = 'pt-BR';
 
       recognition.onresult = (event) => {
-        let textoAtual = '';
+        let textoCompleto = '';
         for (let i = 0; i < event.results.length; i++) {
-          textoAtual += event.results[i][0].transcript;
+          const pedaco = event.results[i][0].transcript.trim();
+          if (pedaco) {
+            textoCompleto = textoCompleto ? `${textoCompleto} ${pedaco}` : pedaco;
+          }
         }
-        setTranscricao(textoAtual);
+        setTranscricao(textoCompleto);
       };
 
-      recognition.onerror = () => setOuvindo(false);
-      recognition.onend = () => setOuvindo(false);
+      recognition.onerror = (e) => {
+        console.warn('Aviso de reconhecimento:', e.error);
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          shouldKeepListeningRef.current = false;
+          setOuvindo(false);
+        }
+      };
+
+      recognition.onend = () => {
+        // Reconexão contínua caso o usuário não tenha clicado para parar
+        if (shouldKeepListeningRef.current) {
+          try {
+            recognition.start();
+            setOuvindo(true);
+            return;
+          } catch (err) {
+            console.warn('Erro ao reiniciar escuta contínua:', err);
+          }
+        }
+        setOuvindo(false);
+      };
+
       recognitionRef.current = recognition;
     }
+
+    return () => {
+      shouldKeepListeningRef.current = false;
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+      }
+    };
   }, []);
 
   const alternarMicrofone = () => {
     if (!recognitionRef.current) {
-      alert("Navegador sem suporte nativo a reconhecimento de voz. Utilize o Chrome ou Edge.");
+      alert("Navegador sem suporte nativo a reconhecimento de voz. Utilize o Chrome, Edge ou Safari.");
       return;
     }
+
     if (ouvindo) {
+      shouldKeepListeningRef.current = false;
       try {
         recognitionRef.current.stop();
       } catch (e) {}
       setOuvindo(false);
     } else {
+      shouldKeepListeningRef.current = true;
       setTranscricao('');
       try {
         recognitionRef.current.start();
         setOuvindo(true);
       } catch (e) {
         console.warn('Erro ao iniciar reconhecimento:', e);
+        shouldKeepListeningRef.current = false;
         setOuvindo(false);
       }
     }
   };
 
-  // Síntese de Voz com Feedback Tátil (Vibração) e Visual
+  // Síntese de Voz com Seleção Nativa de Voz pt-BR e Haptic Feedback
   const falarTexto = (texto) => {
     if (!('speechSynthesis' in window)) return;
 
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(texto);
+    const utterance = new SpeechSynthesisUtterance(texto.trim());
     utterance.lang = 'pt-BR';
     utterance.rate = 0.95; // Cadência confortável para balcão
+
+    // Seleciona a melhor voz brasileira disponível
+    try {
+      const voices = window.speechSynthesis.getVoices();
+      const ptVoice = voices.find(v => v.lang === 'pt-BR' || v.lang === 'pt_BR') || voices.find(v => v.lang.startsWith('pt'));
+      if (ptVoice) {
+        utterance.voice = ptVoice;
+      }
+    } catch (e) {}
 
     utterance.onstart = () => {
       setFalando(true);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate(60); // Vibração curta de confirmação de início
+          navigator.vibrate(60); // Vibração curta de confirmação
         } catch (e) {}
       }
     };
@@ -141,7 +193,7 @@ export default function FalaFacilApp() {
       setFalando(false);
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
-          navigator.vibrate([40, 60, 40]); // Pulso tátil duplo avisando que terminou de falar
+          navigator.vibrate([40, 60, 40]); // Pulso tátil duplo de encerramento
         } catch (e) {}
       }
     };
@@ -155,15 +207,26 @@ export default function FalaFacilApp() {
 
   const handleEnviarManual = (e) => {
     e.preventDefault();
-    if (!textoManual.trim()) return;
-    falarTexto(textoManual);
+    const limpo = textoManual.trim();
+    if (!limpo) return;
+    falarTexto(limpo);
     setTextoManual('');
   };
 
   const handleAdicionarFraseCustom = (e) => {
     e.preventDefault();
-    if (!novaFraseCustom.trim()) return;
-    setFrasesCustom([novaFraseCustom.trim(), ...frasesCustom]);
+    const limpa = novaFraseCustom.trim();
+    if (!limpa) return;
+    if (limpa.length > 120) {
+      alert("A frase não pode exceder 120 caracteres.");
+      return;
+    }
+    // Evita duplicatas
+    if (frasesCustom.some(f => f.toLowerCase() === limpa.toLowerCase())) {
+      alert("Esta frase já está na sua lista.");
+      return;
+    }
+    setFrasesCustom([limpa, ...frasesCustom]);
     setNovaFraseCustom('');
   };
 
@@ -171,210 +234,337 @@ export default function FalaFacilApp() {
     setFrasesCustom(frasesCustom.filter((_, i) => i !== index));
   };
 
+  const handleToggleFontSize = () => {
+    setFontSizeIndex((prev) => (prev + 1) % 3);
+  };
+
+  const handleToggleAltoContraste = () => {
+    setAltoContraste((prev) => !prev);
+  };
+
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-slate-100 border border-slate-300 font-sans shadow-2xl select-none">
-      
-      {/* PAINEL SUPERIOR: Atendente Ouvinte */}
-      <div className="flex-1 bg-white p-4 flex flex-col justify-between border-b-4 border-indigo-600">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md">
-              Atendente Ouvinte
-            </span>
-            {ouvindo && (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                Gravando
+    <div className={`flex justify-center items-stretch min-h-screen ${altoContraste ? 'bg-black' : 'bg-slate-900'}`}>
+      <main className={`flex flex-col h-screen w-full max-w-md mx-auto font-sans shadow-2xl select-none overflow-hidden border-x ${
+        altoContraste ? 'bg-black text-yellow-300 border-yellow-500' : 'bg-slate-100 text-slate-800 border-slate-300'
+      }`}>
+        
+        {/* PAINEL SUPERIOR: Atendente Ouvinte */}
+        <section className={`flex-1 p-4 flex flex-col justify-between border-b-4 ${
+          altoContraste ? 'bg-zinc-950 border-yellow-400' : 'bg-white border-indigo-600'
+        }`}>
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
+                altoContraste ? 'bg-yellow-400 text-black font-black' : 'text-indigo-700 bg-indigo-50 border border-indigo-200'
+              }`}>
+                Atendente Ouvinte
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button 
-              type="button"
-              onClick={() => setIsLegalOpen(true)}
-              title="Termos de Uso e Privacidade LGPD"
-              className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-              aria-label="Termos e LGPD"
-            >
-              <Shield size={15} />
-            </button>
-            <button 
-              type="button"
-              onClick={() => setIsPixOpen(true)}
-              title="Apoio Pix Bacen"
-              className="p-1 text-slate-400 hover:text-emerald-600 transition-colors"
-              aria-label="Apoiar projeto via Pix"
-            >
-              <Heart size={15} />
-            </button>
-            <button 
-              type="button"
-              onClick={() => setTranscricao('')} 
-              className="text-slate-400 hover:text-slate-600 text-xs flex items-center gap-1 font-medium transition-colors ml-1"
-            >
-              <RotateCcw size={14} /> Limpar
-            </button>
-          </div>
-        </div>
+              {ouvindo && (
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                  Ao Vivo
+                </span>
+              )}
+            </div>
 
-        {/* Caixa de Exibição da Transcrição */}
-        <div className="my-auto min-h-[96px] flex items-center justify-center text-center p-3 bg-slate-50 rounded-2xl border border-slate-200">
-          <p className="text-xl font-semibold text-slate-800 leading-snug">
-            {transcricao || (ouvindo ? "Ouvindo atentamente..." : "Toque no microfone e fale com clareza")}
-          </p>
-        </div>
-
-        {/* Botão de Gravação Principal */}
-        <button
-          type="button"
-          onClick={alternarMicrofone}
-          className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-lg font-bold shadow-md transition-all active:scale-[0.98] ${
-            ouvindo 
-              ? 'bg-rose-600 text-white animate-pulse' 
-              : 'bg-indigo-600 text-white hover:bg-indigo-700'
-          }`}
-        >
-          {ouvindo ? <MicOff size={26} /> : <Mic size={26} />}
-          {ouvindo ? "Concluir Fala" : "Toque para Falar"}
-        </button>
-      </div>
-
-      {/* FEEDBACK VISUAL DE FALA EM ANDAMENTO */}
-      {falando && (
-        <div className="bg-emerald-600 text-white py-2 px-4 flex items-center justify-center gap-2 text-sm font-bold animate-pulse shadow-inner">
-          <Volume2 size={18} />
-          <span>Celular reproduzindo áudio para o atendente...</span>
-        </div>
-      )}
-
-      {/* PAINEL INFERIOR: Usuário Surdo */}
-      <div className="flex-[1.3] bg-slate-50 p-4 flex flex-col justify-between overflow-hidden">
-        <div>
-          {/* Cabeçalho de Navegação de Categorias */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Minhas Respostas
-            </span>
-            <div className="flex gap-1 bg-slate-200 p-1 rounded-xl">
+            {/* Barra de Ferramentas de Acessibilidade */}
+            <div className="flex items-center gap-1.5">
+              {/* Zoom de Fonte */}
               <button 
                 type="button"
-                title="Serviços Públicos"
-                onClick={() => setCategoriaAtiva('servicos')} 
-                className={`p-1.5 rounded-lg transition-colors ${categoriaAtiva === 'servicos' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600'}`}
+                onClick={handleToggleFontSize}
+                title="Ajustar tamanho da fonte"
+                className={`px-2 py-0.5 rounded text-xs font-bold transition-all ${
+                  altoContraste ? 'bg-zinc-800 text-yellow-300 border border-yellow-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+                aria-label={`Tamanho da fonte: nível ${fontLabels[fontSizeIndex]}`}
               >
-                <Building2 size={16} />
+                {fontLabels[fontSizeIndex]}
               </button>
+
+              {/* Modo Alto Contraste */}
               <button 
                 type="button"
-                title="Comércio e Farmácias"
-                onClick={() => setCategoriaAtiva('comercio')} 
-                className={`p-1.5 rounded-lg transition-colors ${categoriaAtiva === 'comercio' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600'}`}
+                onClick={handleToggleAltoContraste}
+                title="Alternar Alto Contraste"
+                className={`p-1 rounded transition-colors ${
+                  altoContraste ? 'bg-yellow-400 text-black' : 'text-slate-400 hover:text-indigo-600'
+                }`}
+                aria-label="Alternar modo de alto contraste"
               >
-                <ShoppingBag size={16} />
+                <Eye size={15} />
               </button>
+
+              {/* Termos & LGPD */}
               <button 
                 type="button"
-                title="Dúvidas de Comunicação"
-                onClick={() => setCategoriaAtiva('ajuda')} 
-                className={`p-1.5 rounded-lg transition-colors ${categoriaAtiva === 'ajuda' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600'}`}
+                onClick={() => setIsLegalOpen(true)}
+                title="Termos de Uso e LGPD"
+                className={`p-1 transition-colors ${
+                  altoContraste ? 'text-yellow-400' : 'text-slate-400 hover:text-indigo-600'
+                }`}
+                aria-label="Termos e LGPD"
               >
-                <MessageCircle size={16} />
+                <Shield size={15} />
               </button>
+
+              {/* Apoio Pix */}
               <button 
                 type="button"
-                title="Minhas Frases Salvas"
-                onClick={() => setCategoriaAtiva('personalizadas')} 
-                className={`p-1.5 rounded-lg transition-colors ${categoriaAtiva === 'personalizadas' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-600'}`}
+                onClick={() => setIsPixOpen(true)}
+                title="Apoio Pix Bacen"
+                className={`p-1 transition-colors ${
+                  altoContraste ? 'text-yellow-400' : 'text-slate-400 hover:text-emerald-600'
+                }`}
+                aria-label="Apoiar projeto via Pix"
               >
-                <BookmarkCheck size={16} />
+                <Heart size={15} />
+              </button>
+
+              {/* Limpar Conversa */}
+              <button 
+                type="button"
+                onClick={() => setTranscricao('')} 
+                className={`text-xs flex items-center gap-1 font-medium transition-colors ml-1 px-1.5 py-0.5 rounded ${
+                  altoContraste ? 'bg-zinc-800 text-yellow-400 border border-yellow-500' : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Limpar transcrição"
+              >
+                <RotateCcw size={13} /> Limpar
               </button>
             </div>
           </div>
 
-          {/* Área de Criação de Frases Personalizadas (Exibida somente na aba correspondente) */}
-          {categoriaAtiva === 'personalizadas' && (
-            <form onSubmit={handleAdicionarFraseCustom} className="flex gap-2 mb-3">
-              <input
-                type="text"
-                placeholder="Salvar nova frase frequente..."
-                value={novaFraseCustom}
-                onChange={(e) => setNovaFraseCustom(e.target.value)}
-                className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white px-3 py-1.5 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-1 text-xs font-semibold"
-              >
-                <Plus size={14} /> Salvar
-              </button>
-            </form>
-          )}
-
-          {/* Grade de Frases / Respostas Rápidas */}
-          <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
-            {categoriaAtiva === 'personalizadas' ? (
-              frasesCustom.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-6">Nenhuma frase salva ainda.</p>
-              ) : (
-                frasesCustom.map((frase, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => falarTexto(frase)}
-                      className="flex-1 text-left px-3 py-2 font-medium text-slate-800 text-sm active:bg-indigo-50 flex items-center justify-between rounded-lg"
-                    >
-                      <span>{frase}</span>
-                      <Volume2 size={16} className="text-indigo-500 shrink-0 ml-2" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverFraseCustom(idx)}
-                      className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
-                      title="Excluir frase"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))
-              )
-            ) : (
-              CATEGORIAS_PADRAO[categoriaAtiva].map((frase, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => falarTexto(frase)}
-                  className="text-left bg-white border border-slate-200 hover:border-indigo-400 p-3 rounded-xl font-medium text-slate-800 text-sm shadow-sm active:bg-indigo-50 flex items-center justify-between transition-colors"
-                >
-                  <span>{frase}</span>
-                  <Volume2 size={16} className="text-indigo-500 shrink-0 ml-2" />
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Input de Fala Avulsa / Digitação Livre */}
-        <form onSubmit={handleEnviarManual} className="flex gap-2 mt-3">
-          <input
-            type="text"
-            placeholder="Ou digite o que precisa agora..."
-            value={textoManual}
-            onChange={(e) => setTextoManual(e.target.value)}
-            className="flex-1 bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner"
-          />
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl shadow-md transition-colors active:scale-95 flex items-center justify-center"
-            title="Falar em voz alta"
+          {/* Caixa de Exibição da Transcrição */}
+          <div className={`my-auto min-h-[105px] max-h-[160px] overflow-y-auto flex items-center justify-center text-center p-3.5 rounded-2xl border ${
+            altoContraste 
+              ? 'bg-black border-yellow-400 text-yellow-300' 
+              : 'bg-slate-50 border-slate-200 text-slate-800'
+          }`}
+          role="region"
+          aria-live="polite"
           >
-            <Send size={18} />
-          </button>
-        </form>
-      </div>
+            <p className={`font-semibold leading-snug ${fontScales[fontSizeIndex]}`}>
+              {transcricao || (ouvindo ? "Ouvindo atentamente... Fale no seu ritmo." : "Toque no botão abaixo e fale com clareza")}
+            </p>
+          </div>
 
-      {/* Modais de Apoio PIX e Legalidade LGPD */}
-      <PixModal isOpen={isPixOpen} onClose={() => setIsPixOpen(false)} />
-      <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
+          {/* Botão de Gravação Principal */}
+          <button
+            type="button"
+            onClick={alternarMicrofone}
+            className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-lg font-bold shadow-md transition-all active:scale-[0.98] ${
+              ouvindo 
+                ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-200' 
+                : altoContraste
+                ? 'bg-yellow-400 text-black hover:bg-yellow-300'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            }`}
+            aria-pressed={ouvindo}
+          >
+            {ouvindo ? <MicOff size={26} /> : <Mic size={26} />}
+            <span>{ouvindo ? "Concluir Fala" : "Toque para Falar"}</span>
+          </button>
+        </section>
+
+        {/* FEEDBACK VISUAL DE FALA EM ANDAMENTO */}
+        {falando && (
+          <div className="bg-emerald-600 text-white py-2 px-4 flex items-center justify-center gap-2 text-sm font-bold animate-pulse shadow-inner">
+            <Volume2 size={18} />
+            <span>Celular reproduzindo áudio para o atendente...</span>
+          </div>
+        )}
+
+        {/* PAINEL INFERIOR: Usuário Surdo */}
+        <section className={`flex-[1.3] p-4 flex flex-col justify-between overflow-hidden ${
+          altoContraste ? 'bg-zinc-950 text-yellow-300' : 'bg-slate-50'
+        }`}>
+          <div>
+            {/* Cabeçalho de Navegação de Categorias */}
+            <div className="flex items-center justify-between mb-3">
+              <span className={`text-xs font-bold uppercase tracking-wider ${
+                altoContraste ? 'text-yellow-400' : 'text-slate-500'
+              }`}>
+                Minhas Respostas
+              </span>
+              <div className={`flex gap-1 p-1 rounded-xl ${
+                altoContraste ? 'bg-zinc-900 border border-yellow-500' : 'bg-slate-200'
+              }`}>
+                <button 
+                  type="button"
+                  title="Serviços Públicos"
+                  onClick={() => setCategoriaAtiva('servicos')} 
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    categoriaAtiva === 'servicos' 
+                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                  }`}
+                  aria-label="Categoria Serviços Públicos"
+                >
+                  <Building2 size={16} />
+                </button>
+                <button 
+                  type="button"
+                  title="Comércio e Farmácias"
+                  onClick={() => setCategoriaAtiva('comercio')} 
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    categoriaAtiva === 'comercio' 
+                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                  }`}
+                  aria-label="Categoria Comércio"
+                >
+                  <ShoppingBag size={16} />
+                </button>
+                <button 
+                  type="button"
+                  title="Dúvidas de Comunicação"
+                  onClick={() => setCategoriaAtiva('ajuda')} 
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    categoriaAtiva === 'ajuda' 
+                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                  }`}
+                  aria-label="Categoria Ajuda e Diálogo"
+                >
+                  <MessageCircle size={16} />
+                </button>
+                <button 
+                  type="button"
+                  title="Minhas Frases Salvas"
+                  onClick={() => setCategoriaAtiva('personalizadas')} 
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    categoriaAtiva === 'personalizadas' 
+                      ? (altoContraste ? 'bg-yellow-400 text-black' : 'bg-white shadow-sm text-indigo-600') 
+                      : (altoContraste ? 'text-yellow-400' : 'text-slate-600')
+                  }`}
+                  aria-label="Categoria Frases Salvas"
+                >
+                  <BookmarkCheck size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Área de Criação de Frases Personalizadas */}
+            {categoriaAtiva === 'personalizadas' && (
+              <form onSubmit={handleAdicionarFraseCustom} className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  maxLength={120}
+                  placeholder="Salvar nova frase frequente..."
+                  value={novaFraseCustom}
+                  onChange={(e) => setNovaFraseCustom(e.target.value)}
+                  className={`flex-1 border rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 ${
+                    altoContraste 
+                      ? 'bg-black border-yellow-400 text-yellow-300 focus:ring-yellow-300' 
+                      : 'bg-white border-slate-300 focus:ring-indigo-500 text-slate-800'
+                  }`}
+                  aria-label="Texto da nova frase personalizada"
+                />
+                <button
+                  type="submit"
+                  className={`px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1 text-xs font-semibold ${
+                    altoContraste 
+                      ? 'bg-yellow-400 text-black hover:bg-yellow-300' 
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  <Plus size={14} /> Salvar
+                </button>
+              </form>
+            )}
+
+            {/* Grade de Frases / Respostas Rápidas */}
+            <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
+              {categoriaAtiva === 'personalizadas' ? (
+                frasesCustom.length === 0 ? (
+                  <p className={`text-center text-xs py-6 ${altoContraste ? 'text-yellow-500' : 'text-slate-400'}`}>
+                    Nenhuma frase salva ainda. Digite acima para criar.
+                  </p>
+                ) : (
+                  frasesCustom.map((frase, idx) => (
+                    <div key={idx} className={`flex items-center gap-1.5 border rounded-xl p-1 shadow-sm ${
+                      altoContraste ? 'bg-black border-yellow-500' : 'bg-white border-slate-200'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => falarTexto(frase)}
+                        className={`flex-1 text-left px-3 py-2 font-medium text-sm rounded-lg active:scale-[0.99] flex items-center justify-between ${
+                          altoContraste ? 'text-yellow-300 hover:bg-zinc-900' : 'text-slate-800 active:bg-indigo-50'
+                        }`}
+                        aria-label={`Falar: ${frase}`}
+                      >
+                        <span>{frase}</span>
+                        <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverFraseCustom(idx)}
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                        title="Excluir frase"
+                        aria-label={`Excluir frase: ${frase}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )
+              ) : (
+                CATEGORIAS_PADRAO[categoriaAtiva].map((frase, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => falarTexto(frase)}
+                    className={`text-left border p-3 rounded-xl font-medium text-sm shadow-sm flex items-center justify-between transition-all active:scale-[0.99] ${
+                      altoContraste 
+                        ? 'bg-black border-yellow-500 text-yellow-300 hover:border-yellow-300' 
+                        : 'bg-white border-slate-200 hover:border-indigo-400 text-slate-800 active:bg-indigo-50'
+                    }`}
+                    aria-label={`Falar: ${frase}`}
+                  >
+                    <span>{frase}</span>
+                    <Volume2 size={16} className={`shrink-0 ml-2 ${altoContraste ? 'text-yellow-400' : 'text-indigo-500'}`} />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Input de Fala Avulsa / Digitação Livre */}
+          <form onSubmit={handleEnviarManual} className="flex gap-2 mt-3">
+            <input
+              type="text"
+              maxLength={200}
+              placeholder="Ou digite o que precisa agora..."
+              value={textoManual}
+              onChange={(e) => setTextoManual(e.target.value)}
+              className={`flex-1 border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 shadow-inner ${
+                altoContraste 
+                  ? 'bg-black border-yellow-400 text-yellow-300 focus:ring-yellow-300' 
+                  : 'bg-white border-slate-300 focus:ring-indigo-500 text-slate-800'
+              }`}
+              aria-label="Texto avulso para sintetizar em voz alta"
+            />
+            <button
+              type="submit"
+              disabled={!textoManual.trim()}
+              className={`p-3 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center ${
+                textoManual.trim()
+                  ? (altoContraste ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-indigo-600 hover:bg-indigo-700 text-white')
+                  : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-60'
+              }`}
+              title="Falar em voz alta"
+              aria-label="Falar em voz alta"
+            >
+              <Send size={18} />
+            </button>
+          </form>
+        </section>
+
+        {/* Modais de Apoio PIX e Legalidade LGPD */}
+        <PixModal isOpen={isPixOpen} onClose={() => setIsPixOpen(false)} />
+        <LegalModal isOpen={isLegalOpen} onClose={() => setIsLegalOpen(false)} />
+      </main>
     </div>
   );
 }
