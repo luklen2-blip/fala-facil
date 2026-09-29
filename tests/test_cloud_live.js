@@ -113,6 +113,17 @@ async function runLiveE2E() {
   if (qrSpaRes.status !== 200) throw new Error(`Rota SPA /qr falhou: HTTP ${qrSpaRes.status}`);
   console.log('     ✅ Rota pública de QR Code /qr/farmacia-central operacional na nuvem');
 
+  // 7. Módulo Passo a Passo do Funcionamento
+  console.log('  7. Validando Módulo Passo a Passo do Funcionamento na Nuvem...');
+  const jsAsset = assetPaths.find(p => p.endsWith('.js'));
+  if (jsAsset) {
+    const jsContent = await requestUrl(jsAsset);
+    if (!jsContent.data.includes('Passo') && !jsContent.data.includes('Atendente')) {
+      throw new Error('Conteúdo do Passo a Passo não encontrado no bundle JS de produção');
+    }
+    console.log('     ✅ Guia Passo a Passo do Funcionamento integrado no bundle de produção');
+  }
+
   console.log('\n🎉 ========================================================');
   console.log('🎉 HOMOLOGAÇÃO LIVE CLOUD CONCLUÍDA COM 100% DE SUCESSO!');
   console.log('🎉 Aplicação 24/7 totalmente operacional no ar!');

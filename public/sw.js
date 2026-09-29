@@ -1,10 +1,10 @@
 /**
  * Service Worker — FalaFácil Balcão
- * Versão: 2.1.3-stable
+ * Versão: 2.1.4-passo-a-passo
  * Estratégia: Network-First total para navegação HTML, Cache-First para assets versionados com hash.
  */
 
-const CACHE_NAME = 'falafacil-v2.1.3-stable';
+const CACHE_NAME = 'falafacil-v2.1.4-passo-a-passo';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.svg'

@@ -21,7 +21,7 @@ async function runAllTests() {
   let passed = 0;
 
   // TESTE 1: Validação do Dicionário de Frases e Categorias Obrigatórias
-  console.log('\n[1/7] Validando categorias e frases essenciais existentes...');
+  console.log('\n[1/8] Validando categorias e frases essenciais existentes...');
   assert.strictEqual(CATEGORIES.length, 3, 'Devem existir 3 categorias principais');
   const catIds = CATEGORIES.map(c => c.id);
   assert.ok(catIds.includes('servicos'), 'Categoria servicos deve existir');
@@ -55,7 +55,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 2: Validação do Motor PIX EMV Bacen e CRC-16
-  console.log('\n[2/7] Validando gerador de PIX EMV com cálculo CRC-16...');
+  console.log('\n[2/8] Validando gerador de PIX EMV com cálculo CRC-16...');
   const pix = generatePixPayload({
     pixKey: 'contato@falafacil.com.br',
     name: 'FalaFacil Balcao',
@@ -75,7 +75,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 3: Validação dos Arquivos de Produção e PWA
-  console.log('\n[3/7] Validando bundle compilado, manifesto e service worker...');
+  console.log('\n[3/8] Validando bundle compilado, manifesto e service worker...');
   const distDir = path.join(__dirname, '..', 'dist');
   assert.ok(fs.existsSync(distDir), 'Diretório dist/ deve existir');
   assert.ok(fs.existsSync(path.join(distDir, 'index.html')), 'dist/index.html deve existir');
@@ -85,7 +85,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 4: Teste de Servidor HTTP e Health Check (/api/health)
-  console.log('\n[4/7] Inicializando servidor local para teste de rotas e /api/health...');
+  console.log('\n[4/8] Inicializando servidor local para teste de rotas e /api/health...');
   process.env.PORT = '3999';
   const serverModule = await import('../server.js');
   const server = serverModule.default;
@@ -144,7 +144,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 5: Auditoria de Segurança OWASP e Proteção Anti-Traversal
-  console.log('\n[5/7] Validando cabeçalhos de segurança e proteção anti-path traversal...');
+  console.log('\n[5/8] Validando cabeçalhos de segurança e proteção anti-path traversal...');
   assert.strictEqual(healthRes.headers['x-content-type-options'], 'nosniff', 'Header X-Content-Type-Options deve ser nosniff');
   assert.strictEqual(healthRes.headers['x-frame-options'], 'SAMEORIGIN', 'Header X-Frame-Options deve ser SAMEORIGIN');
   assert.ok(healthRes.headers['referrer-policy'], 'Referrer-Policy deve estar presente');
@@ -160,7 +160,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 6: Validação de Conformidade Legal e LGPD
-  console.log('\n[6/7] Validando conformidade com LGPD e Termos de Uso...');
+  console.log('\n[6/8] Validando conformidade com LGPD e Termos de Uso...');
   const legalFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'LegalModal.jsx'), 'utf-8');
   assert.ok(legalFile.includes('LGPD'), 'Deve citar conformidade com LGPD');
   assert.ok(legalFile.includes('13.709/2018'), 'Deve citar a Lei 13.709/2018');
@@ -171,7 +171,7 @@ async function runAllTests() {
   passed++;
 
   // TESTE 7: Auditoria e Validação Rigorosa do Módulo QR Code FalaFácil
-  console.log('\n[7/7] Validando Módulo QR Code FalaFácil (13 requisitos técnicos)...');
+  console.log('\n[7/8] Validando Módulo QR Code FalaFácil (13 requisitos técnicos)...');
 
   // 1. Criação de QR Code
   console.log('  -> 1. Criação de QR Code via API...');
@@ -281,16 +281,38 @@ async function runAllTests() {
   // 12. Limpeza do perfil temporário de teste
   await httpReq(`/api/qrcodes/${createData.qrcode.id}`, 'DELETE');
   console.log('     ✅ Exclusão de QR Code e higienização de banco validados');
-
   console.log('  ✅ Todos os requisitos do Módulo QR Code FalaFácil aprovados com nota máxima!');
+  passed++;
+
+  // TESTE 8: Validação do Módulo Passo a Passo do Funcionamento
+  console.log('\n[8/8] Validando Módulo de Passo a Passo do Funcionamento...');
+  const howItWorksModalPath = path.join(__dirname, '..', 'src', 'components', 'HowItWorksModal.jsx');
+  const howItWorksInlinePath = path.join(__dirname, '..', 'src', 'components', 'HowItWorksInline.jsx');
+  assert.ok(fs.existsSync(howItWorksModalPath), 'HowItWorksModal.jsx deve existir');
+  assert.ok(fs.existsSync(howItWorksInlinePath), 'HowItWorksInline.jsx deve existir');
+
+  const modalContent = fs.readFileSync(howItWorksModalPath, 'utf8');
+  assert.ok(modalContent.includes('Passo 1 • Atendente'), 'Modal deve conter o Passo 1');
+  assert.ok(modalContent.includes('Passo 2 • Pessoa Surda'), 'Modal deve conter o Passo 2');
+  assert.ok(modalContent.includes('Passo 3 • Voz em Alto-Falante'), 'Modal deve conter o Passo 3');
+  assert.ok(modalContent.includes('Passo 4 • Para Estabelecimentos'), 'Modal deve conter o Passo 4');
+  assert.ok(modalContent.includes('Speech-to-Text'), 'Modal deve referenciar Speech-to-Text');
+  assert.ok(modalContent.includes('Text-to-Speech'), 'Modal deve referenciar Text-to-Speech');
+
+  const appContent = fs.readFileSync(path.join(__dirname, '..', 'src', 'App.jsx'), 'utf8');
+  assert.ok(appContent.includes('HowItWorksModal'), 'App.jsx deve importar e renderizar HowItWorksModal');
+  assert.ok(appContent.includes('HowItWorksInline'), 'App.jsx deve importar e renderizar HowItWorksInline');
+  assert.ok(appContent.includes('Como Funciona'), 'App.jsx deve conter botão Como Funciona');
+  assert.ok(appContent.includes('como-funciona'), 'App.jsx deve conter aba como-funciona');
+  console.log('  ✅ Módulo de Passo a Passo do Funcionamento validado com sucesso (Modal + Aba Inline)');
   passed++;
 
   // Encerramento limpo do servidor de teste
   server.close();
 
   console.log('\n🎉 ========================================================');
-  console.log(`🎉 TODOS OS ${passed}/7 BLOCOS DE TESTES PASSARAM COM SUCESSO!`);
-  console.log('🎉 FalaFácil Balcão + QR Code homologado com perfeição!');
+  console.log(`🎉 TODOS OS ${passed}/8 BLOCOS DE TESTES PASSARAM COM SUCESSO!`);
+  console.log('🎉 FalaFácil Balcão + QR Code + Passo a Passo homologado!');
   console.log('🎉 ========================================================\n');
   process.exit(0);
 }
