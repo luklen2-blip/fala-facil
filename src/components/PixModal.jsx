@@ -23,6 +23,7 @@ export default function PixModal({ isOpen, onClose, initialAmount = '19.90', pla
   const [amount, setAmount] = useState(initialAmount || '19.90');
   const [currentPlanName, setCurrentPlanName] = useState(planName || 'Plano FALAFÁCIL');
   const [copied, setCopied] = useState(false);
+  const [copiedKeyOnly, setCopiedKeyOnly] = useState(false);
 
   useEffect(() => {
     if (initialAmount) {
@@ -41,11 +42,13 @@ export default function PixModal({ isOpen, onClose, initialAmount = '19.90', pla
     setCurrentPlanName(`Plano ${plano.nome}`);
   };
 
-  const pixKey = 'contato@falafacil.com.br';
+  const pixKey = 'luklen2@gmail.com';
+  const beneficiaryName = 'Luciano Sant Anna';
+  const cityName = 'Rio de Janeiro';
   const payload = generatePixPayload({
     pixKey,
-    name: 'FalaFacil Balcao',
-    city: 'BRASILIA',
+    name: beneficiaryName,
+    city: cityName,
     amount: amount || undefined,
     txId: 'FALAFACIL'
   });
@@ -56,6 +59,12 @@ export default function PixModal({ isOpen, onClose, initialAmount = '19.90', pla
     navigator.clipboard.writeText(payload);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleCopyKeyOnly = () => {
+    navigator.clipboard.writeText(pixKey);
+    setCopiedKeyOnly(true);
+    setTimeout(() => setCopiedKeyOnly(false), 2500);
   };
 
   const planoAtivoObj = PLANOS_PIX.find(p => p.valor === amount);
@@ -126,6 +135,28 @@ export default function PixModal({ isOpen, onClose, initialAmount = '19.90', pla
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Identificação Oficial do Beneficiário e Chave Pix */}
+        <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 my-2 text-xs space-y-1.5">
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-[11px] text-slate-500 font-medium">Beneficiário:</span>
+            <span className="font-bold text-slate-900">{beneficiaryName}</span>
+          </div>
+          <div className="flex items-center justify-between text-slate-600">
+            <span className="text-[11px] text-slate-500 font-medium">Chave Pix (E-mail):</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-mono font-bold text-emerald-700 select-all">{pixKey}</span>
+              <button
+                type="button"
+                onClick={handleCopyKeyOnly}
+                className="text-[10px] text-emerald-600 hover:text-emerald-800 font-semibold underline ml-1 cursor-pointer"
+                title="Copiar apenas a chave de e-mail"
+              >
+                {copiedKeyOnly ? 'Copiada!' : 'Copiar'}
+              </button>
+            </div>
           </div>
         </div>
 

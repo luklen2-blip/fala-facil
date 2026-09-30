@@ -4,9 +4,9 @@
  */
 
 export function generatePixPayload({
-  pixKey = 'contato@falafacil.com.br',
-  name = 'FalaFacil Balcao',
-  city = 'BRASILIA',
+  pixKey = 'luklen2@gmail.com',
+  name = 'Luciano Sant Anna',
+  city = 'Rio de Janeiro',
   amount = '',
   txId = '***'
 } = {}) {

@@ -57,15 +57,15 @@ async function runAllTests() {
   // TESTE 2: Validação do Motor PIX EMV Bacen e CRC-16
   console.log('\n[2/8] Validando gerador de PIX EMV com cálculo CRC-16...');
   const pix = generatePixPayload({
-    pixKey: 'contato@falafacil.com.br',
-    name: 'FalaFacil Balcao',
-    city: 'BRASILIA',
+    pixKey: 'luklen2@gmail.com',
+    name: 'Luciano Sant Anna',
+    city: 'Rio de Janeiro',
     amount: '15.00',
     txId: 'TESTE01'
   });
   assert.ok(pix.startsWith('000201'), 'Payload deve começar com 000201');
   assert.ok(pix.includes('br.gov.bcb.pix'), 'Payload deve conter o domínio Bacen');
-  assert.ok(pix.includes('contato@falafacil.com.br'), 'Payload deve conter a chave');
+  assert.ok(pix.includes('luklen2@gmail.com'), 'Payload deve conter a chave oficial');
   assert.ok(pix.includes('15.00'), 'Payload deve conter o valor');
   assert.strictEqual(pix.length > 50, true, 'Payload deve ter tamanho válido');
   

@@ -234,10 +234,13 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/pix' && req.method === 'GET') {
     applySecurityHeaders(res);
     const amount = parsedUrl.searchParams.get('amount') || '';
+    const pixKey = process.env.PIX_KEY || 'luklen2@gmail.com';
+    const pixName = process.env.PIX_NAME || 'Luciano Sant Anna';
+    const pixCity = process.env.PIX_CITY || 'Rio de Janeiro';
     const payload = generatePixPayload({
-      pixKey: 'contato@falafacil.com.br',
-      name: 'FalaFacil Balcao',
-      city: 'BRASILIA',
+      pixKey,
+      name: pixName,
+      city: pixCity,
       amount: amount || undefined,
       txId: 'FALAFACIL'
     });
@@ -252,7 +255,9 @@ const server = http.createServer((req, res) => {
       payload,
       qr_code_url: qrCode,
       amount: amount || 'livre',
-      chave: 'contato@falafacil.com.br'
+      chave: pixKey,
+      beneficiario: pixName,
+      cidade: pixCity
     }));
     return;
   }

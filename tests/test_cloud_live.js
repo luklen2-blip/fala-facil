@@ -97,7 +97,10 @@ async function runLiveE2E() {
   if (!pixJson.payload || !pixJson.payload.startsWith('000201')) {
     throw new Error('Payload Pix inválido retornado pela API');
   }
-  console.log('     ✅ API de PIX gerando payload EMV oficial com sucesso');
+  if (!pixJson.payload.includes('luklen2@gmail.com')) {
+    throw new Error('Payload Pix não contém a chave oficial luklen2@gmail.com');
+  }
+  console.log(`     ✅ API de PIX gerando payload EMV oficial com sucesso (Chave: ${pixJson.chave})`);
 
   // 6. Módulo FalaFácil QR Code (Cenário Farmácia Central)
   console.log('  6. Validando Módulo QR Code FalaFácil na Nuvem...');
