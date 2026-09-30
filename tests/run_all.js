@@ -292,6 +292,9 @@ async function runAllTests() {
   assert.ok(fs.existsSync(howItWorksInlinePath), 'HowItWorksInline.jsx deve existir');
 
   const modalContent = fs.readFileSync(howItWorksModalPath, 'utf8');
+  const inlineContent = fs.readFileSync(howItWorksInlinePath, 'utf8');
+
+  // Validação dos passos de funcionamento existentes (preservação estrita)
   assert.ok(modalContent.includes('Passo 1 • Atendente'), 'Modal deve conter o Passo 1');
   assert.ok(modalContent.includes('Passo 2 • Pessoa Surda'), 'Modal deve conter o Passo 2');
   assert.ok(modalContent.includes('Passo 3 • Voz em Alto-Falante'), 'Modal deve conter o Passo 3');
@@ -299,12 +302,40 @@ async function runAllTests() {
   assert.ok(modalContent.includes('Speech-to-Text'), 'Modal deve referenciar Speech-to-Text');
   assert.ok(modalContent.includes('Text-to-Speech'), 'Modal deve referenciar Text-to-Speech');
 
+  // Validação da NOVA ETAPA: "Para quem o FalaFácil pode ajudar?"
+  assert.ok(modalContent.includes('Para quem o FalaFácil pode ajudar?'), 'Modal deve conter título da nova etapa');
+  assert.ok(inlineContent.includes('Para quem o FalaFácil pode ajudar?'), 'Inline deve conter título da nova etapa');
+
+  // Validação dos 6 públicos atendidos
+  const publicosEsperados = [
+    'Pessoas com dificuldades de fala ou comunicação',
+    'Pessoas surdas ou com deficiência auditiva',
+    'Pessoas neurodivergentes',
+    'Idosos',
+    'Familiares e cuidadores',
+    'Estabelecimentos'
+  ];
+
+  for (const pub of publicosEsperados) {
+    assert.ok(modalContent.includes(pub), `Modal deve conter público: ${pub}`);
+    assert.ok(inlineContent.includes(pub), `Inline deve conter público: ${pub}`);
+  }
+
+  // Validação da Observação Importante (Ferramenta complementar, sem promessas)
+  const obsEsperada = 'O FalaFácil é uma ferramenta complementar de comunicação. As necessidades de cada pessoa são diferentes e, quando necessário, não substitui intérpretes, profissionais especializados ou outros recursos de acessibilidade.';
+  assert.ok(modalContent.includes(obsEsperada), 'Modal deve conter a observação importante');
+  assert.ok(inlineContent.includes(obsEsperada), 'Inline deve conter a observação importante');
+
+  // Validação do Botão Final de Ação ("Agora experimente o FalaFácil")
+  assert.ok(modalContent.includes('Agora experimente o FalaFácil'), 'Modal deve conter botão Agora experimente o FalaFácil');
+  assert.ok(inlineContent.includes('Agora experimente o FalaFácil'), 'Inline deve conter botão Agora experimente o FalaFácil');
+
   const appContent = fs.readFileSync(path.join(__dirname, '..', 'src', 'App.jsx'), 'utf8');
   assert.ok(appContent.includes('HowItWorksModal'), 'App.jsx deve importar e renderizar HowItWorksModal');
   assert.ok(appContent.includes('HowItWorksInline'), 'App.jsx deve importar e renderizar HowItWorksInline');
   assert.ok(appContent.includes('Como Funciona'), 'App.jsx deve conter botão Como Funciona');
   assert.ok(appContent.includes('como-funciona'), 'App.jsx deve conter aba como-funciona');
-  console.log('  ✅ Módulo de Passo a Passo do Funcionamento validado com sucesso (Modal + Aba Inline)');
+  console.log('  ✅ Módulo de Passo a Passo validado com sucesso (Nova etapa dos 6 públicos, observação legal e botão de experimentação)');
   passed++;
 
   // Encerramento limpo do servidor de teste

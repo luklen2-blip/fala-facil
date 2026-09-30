@@ -608,6 +608,7 @@ export default function FalaFacilApp() {
                 onOpenFullGuide={() => setIsHowItWorksOpen(true)}
                 onOpenQR={() => setPainelAba('qrcode')}
                 onOpenPlans={() => setPainelAba('planos')}
+                onStartExperience={() => setPainelAba('frases')}
                 altoContraste={altoContraste}
               />
             )}

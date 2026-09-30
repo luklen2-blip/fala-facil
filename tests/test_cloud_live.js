@@ -121,7 +121,10 @@ async function runLiveE2E() {
     if (!jsContent.data.includes('Passo') && !jsContent.data.includes('Atendente')) {
       throw new Error('Conteúdo do Passo a Passo não encontrado no bundle JS de produção');
     }
-    console.log('     ✅ Guia Passo a Passo do Funcionamento integrado no bundle de produção');
+    if (!jsContent.data.includes('Para quem') && !jsContent.data.includes('neurodivergentes')) {
+      throw new Error('Nova etapa dos públicos não encontrada no bundle JS de produção');
+    }
+    console.log('     ✅ Guia Passo a Passo e Nova Etapa dos Públicos integrados no bundle de produção');
   }
 
   console.log('\n🎉 ========================================================');

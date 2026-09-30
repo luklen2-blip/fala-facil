@@ -2,18 +2,88 @@ import React, { useState } from 'react';
 import { 
   X, Mic, Volume2, MessageSquare, QrCode, Sparkles, CheckCircle2, 
   HelpCircle, ArrowRight, Smartphone, Eye, Type, Shield, Download,
-  Store, Building2
+  Store, Building2, Users, Heart
 } from 'lucide-react';
 
-export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans, altoContraste = false }) {
+export default function HowItWorksModal({ 
+  isOpen, 
+  onClose, 
+  onOpenQR, 
+  onOpenPlans, 
+  altoContraste = false 
+}) {
   if (!isOpen) return null;
 
   const [activeTab, setActiveTab] = useState(0);
 
   const passos = [
     {
-      id: 'atendente',
+      id: 'oquee',
       numero: '1',
+      navTitulo: '1. O Que É',
+      badge: 'Visão Geral • O Que É',
+      titulo: 'O que é o FalaFácil Balcão?',
+      subtitulo: 'Comunicação Acessível Imediata em Balcões',
+      cor: 'indigo',
+      icone: Sparkles,
+      descricao: 'O FalaFácil é uma ferramenta assistiva web desenvolvida para tornar o atendimento presencial rápido, claro e inclusivo entre pessoas ouvintes e pessoas que necessitam de apoio para se comunicar.',
+      detalhes: [
+        'Funciona direto no navegador (web/PWA), sem exigir download ou instalação de aplicativo.',
+        'Conecta o atendente ouvinte ao cliente com dificuldades de fala ou audição de forma fluida.',
+        'Transforma a voz do atendente em texto grande e as frases do cliente em voz alta com vibração.',
+        'Pronto para uso em farmácias, comércios, clínicas, órgãos públicos, cartórios e serviços.'
+      ],
+      dica: 'Dica: O FalaFácil pode ser utilizado em qualquer smartphone, tablet ou computador com microfone.'
+    },
+    {
+      id: 'paraquem',
+      numero: '2',
+      navTitulo: '2. Para Quem',
+      badge: 'Inclusão • Públicos Atendidos',
+      titulo: 'Para quem o FalaFácil pode ajudar?',
+      subtitulo: 'Comunicação Acessível em Atendimentos Presenciais',
+      cor: 'blue',
+      icone: Users,
+      descricao: 'O FalaFácil é uma ferramenta de comunicação acessível para pessoas que podem encontrar dificuldades para se comunicar durante atendimentos presenciais.',
+      isPublicos: true,
+      publicos: [
+        {
+          emoji: '🗣️',
+          titulo: 'Pessoas com dificuldades de fala ou comunicação',
+          texto: 'Pode ajudar quem encontra dificuldades para expressar verbalmente o que precisa durante um atendimento.'
+        },
+        {
+          emoji: '👂',
+          titulo: 'Pessoas surdas ou com deficiência auditiva',
+          texto: 'Pode funcionar como recurso complementar de comunicação em determinadas situações.'
+        },
+        {
+          emoji: '🧩',
+          titulo: 'Pessoas neurodivergentes',
+          texto: 'Pode ser útil para quem prefere utilizar frases previamente preparadas ou uma comunicação mais previsível.'
+        },
+        {
+          emoji: '👵',
+          titulo: 'Idosos',
+          texto: 'Recursos como texto ampliado, contraste e voz podem facilitar determinadas situações de comunicação.'
+        },
+        {
+          emoji: '👨‍👩‍👧',
+          titulo: 'Familiares e cuidadores',
+          texto: 'Pode ajudar familiares e cuidadores que acompanham alguém durante atendimentos.'
+        },
+        {
+          emoji: '🏪',
+          titulo: 'Estabelecimentos',
+          texto: 'Farmácias, lojas, clínicas, restaurantes e outros estabelecimentos podem disponibilizar o FalaFácil como uma alternativa de comunicação acessível aos seus clientes.'
+        }
+      ],
+      observacaoImportante: 'O FalaFácil é uma ferramenta complementar de comunicação. As necessidades de cada pessoa são diferentes e, quando necessário, não substitui intérpretes, profissionais especializados ou outros recursos de acessibilidade.'
+    },
+    {
+      id: 'atendente',
+      numero: '3',
+      navTitulo: '3. Atendente',
       badge: 'Passo 1 • Atendente',
       titulo: 'O Atendente Fala no Microfone',
       subtitulo: 'Reconhecimento de Voz Inteligente (Speech-to-Text)',
@@ -30,7 +100,8 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
     },
     {
       id: 'usuario',
-      numero: '2',
+      numero: '4',
+      navTitulo: '4. Resposta',
       badge: 'Passo 2 • Pessoa Surda',
       titulo: 'A Pessoa Surda Escolhe ou Digita',
       subtitulo: 'Comunicação Direta por Frases ou Texto Livre',
@@ -47,7 +118,8 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
     },
     {
       id: 'audio',
-      numero: '3',
+      numero: '5',
+      navTitulo: '5. Voz',
       badge: 'Passo 3 • Voz em Alto-Falante',
       titulo: 'O Celular Fala para o Atendente',
       subtitulo: 'Síntese de Voz com Confirmação Tátil (Text-to-Speech)',
@@ -64,7 +136,8 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
     },
     {
       id: 'qrcode',
-      numero: '4',
+      numero: '6',
+      navTitulo: '6. QR Balcão',
       badge: 'Passo 4 • Para Estabelecimentos',
       titulo: 'QR Code Exclusivo no Balcão',
       subtitulo: 'Acesso Instantâneo Sem Instalação de App',
@@ -95,7 +168,7 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
       }`}>
         
         {/* Cabeçalho */}
-        <header className={`px-5 py-4 flex items-center justify-between border-b ${
+        <header className={`px-5 py-4 flex items-center justify-between border-b shrink-0 ${
           altoContraste ? 'bg-zinc-950 border-yellow-500 text-yellow-400' : 'bg-slate-900 text-white border-slate-800'
         }`}>
           <div className="flex items-center gap-2.5">
@@ -109,7 +182,7 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
                 Como Funciona o FalaFácil Balcão
               </h2>
               <p className={`text-[11px] ${altoContraste ? 'text-yellow-300' : 'text-slate-400'}`}>
-                Passo a passo da comunicação acessível entre ouvintes e surdos
+                Passo a passo da comunicação acessível entre atendentes e clientes
               </p>
             </div>
           </div>
@@ -125,8 +198,8 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
           </button>
         </header>
 
-        {/* Seletor de Passos (Navegação Superior) */}
-        <div className={`grid grid-cols-4 p-2 gap-1.5 border-b text-center shrink-0 ${
+        {/* Seletor de Passos (Navegação Superior Responsiva com Scroll Horizontal Suave) */}
+        <div className={`flex overflow-x-auto no-scrollbar p-1.5 gap-1 border-b text-center shrink-0 ${
           altoContraste ? 'bg-zinc-900 border-yellow-500' : 'bg-slate-100 border-slate-200'
         }`}>
           {passos.map((p, idx) => {
@@ -137,7 +210,7 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
                 key={p.id}
                 type="button"
                 onClick={() => setActiveTab(idx)}
-                className={`py-2 px-1 rounded-xl text-xs font-bold transition-all flex flex-col items-center gap-1 ${
+                className={`flex-1 min-w-[72px] sm:min-w-[80px] py-1.5 px-1.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 shrink-0 ${
                   isSelected
                     ? (altoContraste 
                         ? 'bg-yellow-400 text-black font-black shadow' 
@@ -148,10 +221,8 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
                 }`}
                 aria-pressed={isSelected}
               >
-                <div className="flex items-center gap-1">
-                  <Icon size={14} />
-                  <span className="text-[11px]">Passo {p.numero}</span>
-                </div>
+                <Icon size={13} />
+                <span className="text-[10px] whitespace-nowrap">{p.navTitulo}</span>
               </button>
             );
           })}
@@ -173,7 +244,7 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
                 {passoAtual.badge}
               </span>
               <span className="text-xs font-bold opacity-75">
-                {activeTab + 1} de 4
+                {activeTab + 1} de {passos.length}
               </span>
             </div>
 
@@ -193,36 +264,120 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
             </p>
           </div>
 
-          {/* Lista de Detalhes Práticos */}
-          <div className="space-y-2">
-            <h4 className="font-bold text-xs uppercase tracking-wider opacity-90">
-              Como funciona na prática:
-            </h4>
-            <div className="space-y-1.5">
-              {passoAtual.detalhes.map((item, i) => (
-                <div 
-                  key={i} 
-                  className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs leading-relaxed ${
-                    altoContraste ? 'bg-zinc-900 border-yellow-500/50' : 'bg-white border-slate-200'
+          {/* RENDERIZAÇÃO ESPECIAL DA ETAPA: PARA QUEM O FALAFÁCIL PODE AJUDAR */}
+          {passoAtual.isPublicos ? (
+            <div className="space-y-3">
+              <h4 className="font-extrabold text-xs uppercase tracking-wider opacity-90 flex items-center gap-1.5">
+                <Users size={14} className={altoContraste ? 'text-yellow-400' : 'text-indigo-600'} />
+                <span>Públicos que podem se beneficiar:</span>
+              </h4>
+
+              {/* Grid dos 6 Públicos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {passoAtual.publicos.map((pub, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-2xl border transition-all ${
+                      altoContraste 
+                        ? 'bg-zinc-900 border-yellow-500/60 text-yellow-300' 
+                        : 'bg-white border-slate-200 hover:border-indigo-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-xl shrink-0 select-none" role="img" aria-hidden="true">
+                        {pub.emoji}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="font-bold text-xs leading-tight text-slate-900 dark:text-yellow-300">
+                          {pub.titulo}
+                        </h5>
+                        <p className={`text-[11px] mt-1 leading-snug ${
+                          altoContraste ? 'text-yellow-200' : 'text-slate-600'
+                        }`}>
+                          {pub.texto}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Observação Importante Exigida (Texto legível, sem linguagem médica e sem promessa) */}
+              <div className={`p-3 rounded-xl border text-[11px] leading-relaxed font-medium ${
+                altoContraste 
+                  ? 'bg-black border-yellow-400 text-yellow-300' 
+                  : 'bg-amber-50/90 border-amber-200 text-amber-950'
+              }`}>
+                <p className="font-bold mb-0.5 text-xs">
+                  ℹ️ Observação Importante:
+                </p>
+                <p>
+                  {passoAtual.observacaoImportante}
+                </p>
+              </div>
+
+              {/* Botão de Ação Rápida: Experimente Agora */}
+              <div className="pt-1 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(2)}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
+                    altoContraste ? 'border-yellow-400 text-yellow-300 hover:bg-zinc-900' : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50'
                   }`}
                 >
-                  <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${
-                    altoContraste ? 'text-yellow-400' : 'text-emerald-600'
-                  }`} />
-                  <span>{item}</span>
-                </div>
-              ))}
+                  <span>Ver Como Funciona</span>
+                  <ArrowRight size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold shadow-sm transition-all flex items-center justify-center gap-1 ${
+                    altoContraste ? 'bg-yellow-400 text-black font-black' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}
+                >
+                  <span>Agora experimente o FalaFácil</span>
+                  <CheckCircle2 size={13} />
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Lista de Detalhes Práticos para as Demais Etapas */}
+              {passoAtual.detalhes && (
+                <div className="space-y-2">
+                  <h4 className="font-bold text-xs uppercase tracking-wider opacity-90">
+                    Como funciona na prática:
+                  </h4>
+                  <div className="space-y-1.5">
+                    {passoAtual.detalhes.map((item, i) => (
+                      <div 
+                        key={i} 
+                        className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs leading-relaxed ${
+                          altoContraste ? 'bg-zinc-900 border-yellow-500/50' : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${
+                          altoContraste ? 'text-yellow-400' : 'text-emerald-600'
+                        }`} />
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Caixa de Dica Prática */}
-          <div className={`p-3 rounded-xl border text-xs font-medium ${
-            altoContraste 
-              ? 'bg-black border-yellow-400 text-yellow-300' 
-              : 'bg-amber-50 border-amber-200 text-amber-900'
-          }`}>
-            💡 {passoAtual.dica}
-          </div>
+              {/* Caixa de Dica Prática */}
+              {passoAtual.dica && (
+                <div className={`p-3 rounded-xl border text-xs font-medium ${
+                  altoContraste 
+                    ? 'bg-black border-yellow-400 text-yellow-300' 
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}>
+                  💡 {passoAtual.dica}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Recursos Essenciais de Acessibilidade */}
           <div className={`p-3.5 rounded-2xl border ${
@@ -303,7 +458,7 @@ export default function HowItWorksModal({ isOpen, onClose, onOpenQR, onOpenPlans
                 altoContraste ? 'bg-yellow-400 text-black font-black' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
               }`}
             >
-              <span>Entendido!</span>
+              <span>Agora experimente o FalaFácil</span>
               <CheckCircle2 size={13} />
             </button>
           )}
